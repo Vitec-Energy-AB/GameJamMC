@@ -1,7 +1,6 @@
 import { Match, CrumblingPlatformState, Player } from '../../shared/types';
 import { Server } from 'socket.io';
 
-const CRUMBLE_TRIGGER_MS = 0;   // starts crumbling immediately when stood on
 const CRUMBLE_FALL_MS   = 5000; // falls away after 5 s of crumbling
 const RESPAWN_MS        = 8000; // respawns 8 s after falling
 

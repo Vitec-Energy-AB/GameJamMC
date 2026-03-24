@@ -8,6 +8,10 @@ const SPAWN_COOLDOWN_MS = 8000;
 type WeaponType = WeaponItem['type'];
 type PowerupType = PowerupItem['type'];
 
+// Projectile travel speeds (px/s)
+const LIGHTNINGSPEAR_SPEED = 800;
+const ICECRYSTAL_SPEED = 400;
+
 interface WeaponTemplate {
   type: WeaponType;
   category: WeaponItem['category'];
@@ -227,6 +231,8 @@ export class ItemSpawnManager {
     if (powerup.type === 'shieldsplitter') {
       player.shieldSplitterUntil = now + 8000;
     } else if (powerup.type === 'lifecore') {
+      // damageMitigation is a fraction [0, 1] that reduces incoming damage.
+      // E.g. 0.3 = 30% reduction. Multiple pickups stack additively, capped at 1.0 (full immunity).
       player.damageMitigation = Math.min(1, (player.damageMitigation ?? 0) + 0.3);
     }
   }
@@ -247,7 +253,7 @@ export class ItemSpawnManager {
         return null;
       }
 
-      const speed = weapon.type === 'lightningspear' ? 800 : 400;
+      const speed = weapon.type === 'lightningspear' ? LIGHTNINGSPEAR_SPEED : ICECRYSTAL_SPEED;
       const dir = player.facing === 'right' ? 1 : -1;
 
       const projectile: Projectile = {
