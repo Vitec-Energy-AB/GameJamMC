@@ -178,6 +178,7 @@
   var currentMatch = null;
   var inGame = false;
   var stateBuffer = [];
+  var currentLavaY = null;
   var localInput = { left: false, right: false, jump: false, attack: false, block: false, throwBomb: false, pickup: false, useWeapon: false };
   var lastInputSent = {};
   var attackPressed = false;
@@ -493,6 +494,7 @@
         if (state.items) currentMatch.items = state.items;
         if (state.projectiles) currentMatch.projectiles = state.projectiles;
       }
+      if (state.lavaY !== undefined) currentLavaY = state.lavaY;
       // Detect local player landing – play a subtle thud
       if (localPlayerId && state.players) {
         var lp = state.players.find(function(p) { return p.id === localPlayerId; });
@@ -1080,6 +1082,34 @@
       drawItems(currentMatch.items);
     }
     drawBlastZoneIndicators();
+
+    // Draw rising lava
+    if (currentLavaY !== null && currentLavaY < CANVAS_H) {
+      var lavaGradient = ctx.createLinearGradient(0, currentLavaY, 0, CANVAS_H);
+      lavaGradient.addColorStop(0, 'rgba(255, 80, 0, 0.9)');
+      lavaGradient.addColorStop(0.3, 'rgba(255, 40, 0, 0.85)');
+      lavaGradient.addColorStop(1, 'rgba(180, 0, 0, 0.8)');
+      ctx.fillStyle = lavaGradient;
+      ctx.fillRect(0, currentLavaY, CANVAS_W, CANVAS_H - currentLavaY);
+
+      ctx.strokeStyle = 'rgba(255, 200, 50, ' + (0.6 + Math.sin(now / 200) * 0.3) + ')';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(0, currentLavaY);
+      for (var lx = 0; lx < CANVAS_W; lx += 20) {
+        ctx.lineTo(lx, currentLavaY + Math.sin((lx + now / 100) * 0.05) * 4);
+      }
+      ctx.stroke();
+
+      if (currentLavaY < CANVAS_H * 0.7) {
+        ctx.save();
+        ctx.font = 'bold 16px "Segoe UI", sans-serif';
+        ctx.fillStyle = 'rgba(255, 100, 0, ' + (0.5 + Math.sin(now / 300) * 0.4) + ')';
+        ctx.textAlign = 'center';
+        ctx.fillText('\u26A0 LAVA RISING! \u26A0', CANVAS_W / 2, 30);
+        ctx.restore();
+      }
+    }
 
     if (state) {
       drawBombs(state.bombs || []);
