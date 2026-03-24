@@ -10,7 +10,7 @@ export function updateBomb(bomb: Bomb, dt: number): void {
   bomb.fuseTimer -= dt;
 }
 
-export function checkBombCollisions(bomb: Bomb, platforms: Platform[]): boolean {
+export function checkBombCollisions(bomb: Bomb, platforms: Platform[], dt: number = 1 / 60): boolean {
   const bombSize = 16;
   for (const platform of platforms) {
     if (
@@ -26,7 +26,7 @@ export function checkBombCollisions(bomb: Bomb, platforms: Platform[]): boolean 
         return false;
       } else {
         // Passthrough - only stop from above
-        if (bomb.velocity.y > 0 && bomb.position.y + bombSize - bomb.velocity.y * (1/60) <= platform.y) {
+        if (bomb.velocity.y > 0 && bomb.position.y + bombSize - bomb.velocity.y * dt <= platform.y) {
           bomb.velocity.x *= 0.5;
           bomb.velocity.y = -Math.abs(bomb.velocity.y) * 0.4;
           bomb.position.y = platform.y - bombSize;

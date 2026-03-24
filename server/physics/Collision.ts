@@ -4,7 +4,7 @@ import { setGrounded } from './Gravity';
 const PLAYER_WIDTH = 40;
 const PLAYER_HEIGHT = 60;
 
-export function checkPlatformCollisions(player: Player, platforms: Platform[]): void {
+export function checkPlatformCollisions(player: Player, platforms: Platform[], dt: number = 1 / 60): void {
   let grounded = false;
 
   for (const platform of platforms) {
@@ -49,7 +49,7 @@ export function checkPlatformCollisions(player: Player, platforms: Platform[]): 
       }
     } else {
       // Passthrough: only collide from above
-      const prevBottom = player.position.y + PLAYER_HEIGHT - player.velocity.y * (1 / 60);
+      const prevBottom = player.position.y + PLAYER_HEIGHT - player.velocity.y * dt;
       if (prevBottom <= platTop && pBottom >= platTop && player.velocity.y >= 0) {
         player.position.y = platTop - PLAYER_HEIGHT;
         grounded = true;

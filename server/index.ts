@@ -2,6 +2,7 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import path from 'path';
+import { rateLimit } from 'express-rate-limit';
 import { SessionManager } from './SessionManager';
 import { RoomManager } from './RoomManager';
 import { LobbyManager } from './LobbyManager';
@@ -18,13 +19,21 @@ const io = new Server(httpServer, {
 
 const PORT = process.env.PORT ?? 3000;
 
+// Rate-limit page requests to mitigate abuse of file-system access routes
+const pageRateLimit = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 app.use(express.static(path.join(__dirname, '../../client')));
 
-app.get('/:roomId', (_req, res) => {
+app.get('/:roomId', pageRateLimit, (_req, res) => {
   res.sendFile(path.join(__dirname, '../../client/index.html'));
 });
 
-app.get('/', (_req, res) => {
+app.get('/', pageRateLimit, (_req, res) => {
   res.sendFile(path.join(__dirname, '../../client/index.html'));
 });
 

@@ -30,7 +30,7 @@ export class GameLoop {
 
     const loop = setInterval(() => {
       const now = Date.now();
-      const dt = Math.min((now - lastTime) / 1000, 0.05); // cap at 50ms
+      const dt = Math.min((now - lastTime) / 1000, 0.05); // cap at 50ms to prevent physics spiral-of-death on lag spikes
       lastTime = now;
 
       if (match.state !== 'active') return;
@@ -74,7 +74,7 @@ export class GameLoop {
         // Physics
         applyMovement(player, dt);
         applyGravity(player, dt);
-        checkPlatformCollisions(player, match.map.platforms);
+        checkPlatformCollisions(player, match.map.platforms, dt);
 
         // Blast zone check
         if (checkBlastZones(player, match.map.blastZones)) {
@@ -86,7 +86,7 @@ export class GameLoop {
       for (let i = match.bombs.length - 1; i >= 0; i--) {
         const bomb = match.bombs[i];
         updateBomb(bomb, dt);
-        checkBombCollisions(bomb, match.map.platforms);
+        checkBombCollisions(bomb, match.map.platforms, dt);
 
         if (bomb.fuseTimer <= 0) {
           // Explode
