@@ -1,5 +1,6 @@
 import { Player, Match } from '../../shared/types';
 import { Server } from 'socket.io';
+import { PLAYER_WIDTH, PLAYER_HEIGHT } from '../../shared/constants';
 
 const RESPAWN_DELAY = 3000; // ms
 const INVULNERABLE_DURATION = 1000; // ms
@@ -9,9 +10,9 @@ const KNOCKOUT_LIVES = 1;
 export function checkBlastZones(player: Player, blastZones: Match['map']['blastZones']): boolean {
   return (
     player.position.y < blastZones.top ||
-    player.position.y > blastZones.bottom ||
+    player.position.y + PLAYER_HEIGHT > blastZones.bottom ||
     player.position.x < blastZones.left ||
-    player.position.x > blastZones.right
+    player.position.x + PLAYER_WIDTH > blastZones.right
   );
 }
 

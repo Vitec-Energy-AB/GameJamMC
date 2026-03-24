@@ -7,8 +7,8 @@ import { getCharacter } from '../../shared/characters';
 const ATTACK_COOLDOWN = 500; // ms
 const BASE_DAMAGE = 15;
 const ATTACK_MODIFIER = 1.0;
-const HITBOX_WIDTH = 60;
-const HITBOX_HEIGHT = 80;
+const HITBOX_WIDTH = 100;
+const HITBOX_HEIGHT = 100;
 
 export interface WeaponOverride {
   damage: number;
