@@ -130,6 +130,16 @@ export interface GameMap {
   crumblingPlatforms?: CrumblingPlatformDef[];
 }
 
+export interface LavaState {
+  active: boolean;
+  currentY: number;
+  riseSpeed: number;
+  baseDamage: number;
+  startDelay: number;
+  startedAt: number;
+  accelerationRate: number;
+}
+
 export interface Match {
   roomId: string;
   state: 'lobby' | 'countdown' | 'active' | 'ended';
@@ -147,6 +157,7 @@ export interface Match {
   crumblingPlatforms: CrumblingPlatformState[];
   mapVotes: { [playerId: string]: string };
   selectedMap: string;
+  lavaState: LavaState;
 }
 
 export interface HitResult {

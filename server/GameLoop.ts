@@ -11,6 +11,7 @@ import { explodeBomb } from './combat/BombSystem';
 import { updateMovingPlatforms } from './physics/MovingPlatform';
 import { updateCrumblingPlatforms, getCrumblingPlatformForCollision } from './physics/CrumblingPlatform';
 import { ItemSpawnManager } from './items/ItemSpawnManager';
+import { initLavaState, updateLava, resetLavaDamageTracking } from './physics/LavaSystem';
 
 const TICK_RATE = 60;
 const TICK_INTERVAL = 1000 / TICK_RATE;
@@ -32,6 +33,9 @@ export class GameLoop {
     }
 
     let lastTime = Date.now();
+
+    // Initialize rising lava
+    initLavaState(match);
 
     const loop = setInterval(() => {
       const now = Date.now();
@@ -105,6 +109,9 @@ export class GameLoop {
       // Auto-pickup items for all alive players
       this.itemSpawnManager.checkAutoPickup(match, io);
 
+      // Update rising lava
+      updateLava(match, dt, io);
+
       // Update bombs
       for (let i = match.bombs.length - 1; i >= 0; i--) {
         const bomb = match.bombs[i];
@@ -144,6 +151,7 @@ export class GameLoop {
         bombs: match.bombs,
         items: match.items,
         projectiles: match.projectiles,
+        lavaY: match.lavaState?.currentY ?? null,
         movingPlatforms: match.movingPlatforms.map(mp => ({
           id: mp.id,
           platform: mp.def.platform,
@@ -165,6 +173,7 @@ export class GameLoop {
       clearInterval(interval);
       this.intervals.delete(roomId);
     }
+    resetLavaDamageTracking(roomId);
   }
 
   getItemSpawnManager(): ItemSpawnManager {

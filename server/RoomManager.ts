@@ -1,5 +1,6 @@
 import { Match, Player } from '../shared/types';
 import { testArena } from './maps/TestArena';
+import { DEFAULT_LAVA_RISE_SPEED, DEFAULT_LAVA_DAMAGE, DEFAULT_START_DELAY, DEFAULT_ACCELERATION } from './physics/LavaSystem';
 
 const PLAYER_COLORS = [
   '#FF4444', '#4444FF', '#44FF44', '#FFAA00',
@@ -29,6 +30,15 @@ export class RoomManager {
         crumblingPlatforms: [],
         mapVotes: {},
         selectedMap: 'testArena',
+        lavaState: {
+          active: true,
+          currentY: testArena.blastZones.bottom,
+          riseSpeed: DEFAULT_LAVA_RISE_SPEED,
+          baseDamage: DEFAULT_LAVA_DAMAGE,
+          startDelay: DEFAULT_START_DELAY,
+          startedAt: 0,
+          accelerationRate: DEFAULT_ACCELERATION,
+        },
       };
       this.rooms.set(roomId, match);
     }
