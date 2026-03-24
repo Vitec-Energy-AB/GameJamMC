@@ -3,6 +3,7 @@ import { Server } from 'socket.io';
 import { respawnPlayer, initPlayerLives } from './combat/EliminationSystem';
 import { buildMovingPlatformStates } from './physics/MovingPlatform';
 import { buildCrumblingPlatformStates } from './physics/CrumblingPlatform';
+import { DEFAULT_LAVA_RISE_SPEED, DEFAULT_LAVA_DAMAGE, DEFAULT_START_DELAY, DEFAULT_ACCELERATION, resetLavaDamageTracking } from './physics/LavaSystem';
 
 export class MatchManager {
   checkWinCondition(match: Match): string | null {
@@ -47,6 +48,16 @@ export class MatchManager {
     match.movingPlatforms = [];
     match.crumblingPlatforms = [];
     match.mapVotes = {};
+    resetLavaDamageTracking(match.roomId);
+    match.lavaState = {
+      active: true,
+      currentY: match.map.blastZones.bottom,
+      riseSpeed: DEFAULT_LAVA_RISE_SPEED,
+      baseDamage: DEFAULT_LAVA_DAMAGE,
+      startDelay: DEFAULT_START_DELAY,
+      startedAt: 0,
+      accelerationRate: DEFAULT_ACCELERATION,
+    };
 
     // Reset players
     for (const player of match.players) {
