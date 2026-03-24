@@ -22,7 +22,7 @@ const io = new Server(httpServer, {
   cors: { origin: CORS_ORIGIN },
 });
 
-const PORT = process.env.PORT ?? 3000;
+const PORT = process.env.PORT ?? 7331;
 
 // Rate-limit page requests to mitigate abuse of file-system access routes
 const pageRateLimit = rateLimit({
