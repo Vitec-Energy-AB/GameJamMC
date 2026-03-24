@@ -4,6 +4,7 @@ import { respawnPlayer, initPlayerLives } from './combat/EliminationSystem';
 import { buildMovingPlatformStates } from './physics/MovingPlatform';
 import { buildCrumblingPlatformStates } from './physics/CrumblingPlatform';
 import { DEFAULT_LAVA_RISE_SPEED, DEFAULT_LAVA_DAMAGE, DEFAULT_START_DELAY, DEFAULT_ACCELERATION, resetLavaDamageTracking } from './physics/LavaSystem';
+import { initPlatformGenerator, resetPlatformGenerator } from './physics/PlatformGenerator';
 
 export class MatchManager {
   checkWinCondition(match: Match): string | null {
@@ -49,6 +50,7 @@ export class MatchManager {
     match.crumblingPlatforms = [];
     match.mapVotes = {};
     resetLavaDamageTracking(match.roomId);
+    resetPlatformGenerator(match.roomId);
     match.lavaState = {
       active: true,
       currentY: match.map.blastZones.bottom,
@@ -118,6 +120,7 @@ export class MatchManager {
     // Initialize dynamic platform states from map definition
     buildMovingPlatformStates(match);
     buildCrumblingPlatformStates(match);
+    initPlatformGenerator(match);
   }
 }
 
