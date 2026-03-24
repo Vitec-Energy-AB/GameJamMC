@@ -27,7 +27,7 @@ export const volcanoPeak: GameMap = {
     { x: 980, y: 340 },
   ],
   blastZones: {
-    top: -200,
+    top: -500,
     bottom: 900,
     left: -100,
     right: 1300,
