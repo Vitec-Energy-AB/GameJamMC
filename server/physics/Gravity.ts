@@ -1,9 +1,10 @@
 import { Player } from '../../shared/types';
+import { getCharacter } from '../../shared/characters';
 
 const GRAVITY = 980;
 const MAX_FALL_SPEED = 1200;
-const JUMP_VELOCITY = -600;
-const MAX_JUMPS = 2;
+const DEFAULT_JUMP_VELOCITY = -600;
+const DEFAULT_MAX_JUMPS = 2;
 
 export function applyGravity(player: Player, dt: number): void {
   if (!player.isGrounded) {
@@ -14,7 +15,9 @@ export function applyGravity(player: Player, dt: number): void {
 
 export function applyJump(player: Player): void {
   if (player.jumpsRemaining > 0) {
-    player.velocity.y = JUMP_VELOCITY;
+    const character = getCharacter(player.character);
+    const jumpVelocity = character ? character.jumpForce : DEFAULT_JUMP_VELOCITY;
+    player.velocity.y = jumpVelocity;
     player.jumpsRemaining--;
     player.isGrounded = false;
   }
@@ -23,7 +26,9 @@ export function applyJump(player: Player): void {
 export function setGrounded(player: Player, grounded: boolean): void {
   player.isGrounded = grounded;
   if (grounded) {
-    player.jumpsRemaining = MAX_JUMPS;
+    const character = getCharacter(player.character);
+    const maxJumps = character ? character.maxJumps : DEFAULT_MAX_JUMPS;
+    player.jumpsRemaining = maxJumps;
     if (player.velocity.y > 0) {
       player.velocity.y = 0;
     }

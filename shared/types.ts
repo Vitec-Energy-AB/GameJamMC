@@ -75,6 +75,8 @@ export interface CrumblingPlatformState {
 export interface Player {
   id: string;
   name: string;
+  /** Selected character id (e.g. 'bjork', 'gnista', 'malm', 'dimma') */
+  character?: string;
   position: { x: number; y: number };
   velocity: { x: number; y: number };
   facing: 'left' | 'right';
