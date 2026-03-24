@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Platform Fighter</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #111; color: #eee; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+    #gameCanvas { display: block; background: #1a1a2e; }
+    #lobbyOverlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.85); display: flex; flex-direction: column;
+      align-items: center; justify-content: center; z-index: 10;
+    }
+    #gameOverScreen {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.9); display: none; flex-direction: column;
+      align-items: center; justify-content: center; z-index: 20;
+    }
+    .lobby-box {
+      background: #16213e; border: 1px solid #0f3460; border-radius: 12px;
+      padding: 32px 40px; min-width: 420px; max-width: 520px;
+    }
+    h1 { font-size: 2rem; color: #e94560; margin-bottom: 8px; text-align: center; }
+    h2 { font-size: 1.3rem; color: #ccc; margin-bottom: 20px; text-align: center; }
+    .form-row { margin-bottom: 14px; }
+    label { display: block; margin-bottom: 4px; color: #aaa; font-size: 0.9rem; }
+    input[type=text], select {
+      width: 100%; padding: 10px 12px; background: #0f3460; border: 1px solid #1a5276;
+      color: #eee; border-radius: 6px; font-size: 1rem; outline: none;
+    }
+    input[type=text]:focus, select:focus { border-color: #e94560; }
+    button {
+      padding: 10px 24px; border: none; border-radius: 6px; cursor: pointer;
+      font-size: 1rem; font-weight: bold; transition: opacity 0.2s;
+    }
+    button:hover { opacity: 0.85; }
+    #joinBtn { background: #e94560; color: #fff; width: 100%; margin-top: 4px; }
+    #readyBtn { background: #27ae60; color: #fff; width: 100%; margin-top: 8px; display: none; }
+    #playerList { margin-top: 16px; }
+    .player-entry {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 10px; margin: 4px 0; border-radius: 6px; background: #0f3460;
+    }
+    .player-dot { width: 12px; height: 12px; border-radius: 50%; }
+    .ready-badge { margin-left: auto; font-size: 0.8rem; padding: 2px 8px; border-radius: 10px; }
+    .ready-yes { background: #27ae60; color: #fff; }
+    .ready-no { background: #555; color: #bbb; }
+    #countdown { font-size: 5rem; color: #e94560; font-weight: bold; text-align: center; display: none; margin: 20px 0; }
+    #statusMsg { color: #f39c12; text-align: center; margin-top: 10px; min-height: 20px; font-size: 0.9rem; }
+    #queueMsg { color: #3498db; text-align: center; margin-top: 8px; display: none; font-size: 0.95rem; }
+    #gameOverTitle { font-size: 4rem; color: #e94560; margin-bottom: 16px; }
+    #winnerName { font-size: 2rem; color: #f39c12; margin-bottom: 30px; }
+    #playAgainBtn { background: #e94560; color: #fff; padding: 12px 40px; font-size: 1.2rem; }
+    #controls { color: #888; font-size: 0.75rem; margin-top: 14px; text-align: center; line-height: 1.6; }
+  </style>
+</head>
+<body>
+
+<canvas id="gameCanvas" width="1200" height="700"></canvas>
+
+<div id="lobbyOverlay">
+  <div class="lobby-box">
+    <h1>&#x2694;&#xFE0F; Platform Fighter</h1>
+    <h2 id="roomLabel">Room: loading...</h2>
+
+    <div id="joinSection">
+      <div class="form-row">
+        <label for="nicknameInput">Your Nickname</label>
+        <input type="text" id="nicknameInput" placeholder="Enter nickname..." maxlength="20" />
+      </div>
+      <div class="form-row">
+        <label for="modeSelect">Game Mode</label>
+        <select id="modeSelect">
+          <option value="stock">Stock (3 Lives)</option>
+          <option value="knockout">Knockout (1 Life)</option>
+        </select>
+      </div>
+      <button id="joinBtn">Join Room</button>
+    </div>
+
+    <button id="readyBtn">&#x2713; Ready Up!</button>
+
+    <div id="queueMsg">&#x23F3; You are queued &mdash; waiting for next match...</div>
+    <div id="statusMsg"></div>
+    <div id="countdown"></div>
+
+    <div id="playerList"></div>
+
+    <div id="controls">
+      Move: &larr; &rarr; (or A D) &nbsp;|&nbsp; Jump: &uarr; / W / Space &nbsp;|&nbsp; Attack: Z &nbsp;|&nbsp; Block: C &nbsp;|&nbsp; Throw Bomb: B
+    </div>
+  </div>
+</div>
+
+<div id="gameOverScreen">
+  <div id="gameOverTitle">GAME OVER</div>
+  <div id="winnerName"></div>
+  <button id="playAgainBtn" onclick="location.reload()">Play Again</button>
+</div>
+
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script>
+(function() {
+  // ── Config ──────────────────────────────────────────────────────────────────
+  var PLAYER_W = 40, PLAYER_H = 60;
+  var CANVAS_W = 1200, CANVAS_H = 700;
+  var INTERPOLATION_DELAY = 100; // ms
+
+  // ── State ───────────────────────────────────────────────────────────────────
+  var roomId = (window.location.pathname.split('/')[1] || 'lobby').replace(/[^a-zA-Z0-9_-]/g, '') || 'lobby';
+  var socket = null;
+  var localPlayerId = null;
+  var currentMatch = null;
+  var inGame = false;
+  var stateBuffer = [];
+  var localInput = { left: false, right: false, jump: false, attack: false, block: false, throwBomb: false };
+  var lastInputSent = {};
+  var attackPressed = false;
+  var bombPressed = false;
+  var explosions = [];
+
+  // ── DOM Refs ────────────────────────────────────────────────────────────────
+  var canvas = document.getElementById('gameCanvas');
+  var ctx = canvas.getContext('2d');
+  var lobbyOverlay = document.getElementById('lobbyOverlay');
+  var gameOverScreen = document.getElementById('gameOverScreen');
+  var joinSection = document.getElementById('joinSection');
+  var readyBtn = document.getElementById('readyBtn');
+  var playerListDiv = document.getElementById('playerList');
+  var countdownDiv = document.getElementById('countdown');
+  var statusMsg = document.getElementById('statusMsg');
+  var queueMsg = document.getElementById('queueMsg');
+  var roomLabel = document.getElementById('roomLabel');
+  var nicknameInput = document.getElementById('nicknameInput');
+  var modeSelect = document.getElementById('modeSelect');
+
+  roomLabel.textContent = 'Room: ' + roomId;
+
+  // ── Input ───────────────────────────────────────────────────────────────────
+  window.addEventListener('keydown', function(e) {
+    switch (e.code) {
+      case 'ArrowLeft': case 'KeyA': localInput.left = true; break;
+      case 'ArrowRight': case 'KeyD': localInput.right = true; break;
+      case 'ArrowUp': case 'KeyW': case 'Space': localInput.jump = true; e.preventDefault(); break;
+      case 'KeyZ': localInput.attack = true; break;
+      case 'KeyC': localInput.block = true; break;
+      case 'KeyB': localInput.throwBomb = true; break;
+    }
+  });
+  window.addEventListener('keyup', function(e) {
+    switch (e.code) {
+      case 'ArrowLeft': case 'KeyA': localInput.left = false; break;
+      case 'ArrowRight': case 'KeyD': localInput.right = false; break;
+      case 'ArrowUp': case 'KeyW': case 'Space': localInput.jump = false; break;
+      case 'KeyZ': localInput.attack = false; break;
+      case 'KeyC': localInput.block = false; break;
+      case 'KeyB': localInput.throwBomb = false; break;
+    }
+  });
+
+  // ── Socket ──────────────────────────────────────────────────────────────────
+  function connectSocket() {
+    socket = io();
+
+    socket.on('connect', function() {
+      localPlayerId = socket.id;
+      statusMsg.textContent = 'Connected. Enter nickname and join!';
+    });
+
+    socket.on('room:joined', function(data) {
+      currentMatch = data.match;
+      if (data.queued) {
+        queueMsg.style.display = 'block';
+        readyBtn.style.display = 'none';
+        joinSection.style.display = 'none';
+      } else {
+        queueMsg.style.display = 'none';
+        readyBtn.style.display = 'block';
+        joinSection.style.display = 'none';
+      }
+      updatePlayerList(data.match.players);
+      statusMsg.textContent = 'Waiting for players... (need 2 to start)';
+    });
+
+    socket.on('room:update', function(match) {
+      currentMatch = match;
+      updatePlayerList(match.players);
+    });
+
+    socket.on('match:countdown', function(data) {
+      countdownDiv.style.display = 'block';
+      countdownDiv.textContent = data.count;
+      readyBtn.style.display = 'none';
+    });
+
+    socket.on('match:start', function(match) {
+      currentMatch = match;
+      inGame = true;
+      lobbyOverlay.style.display = 'none';
+      countdownDiv.style.display = 'none';
+      stateBuffer = [];
+    });
+
+    socket.on('state:update', function(state) {
+      stateBuffer.push(Object.assign({}, state, { receivedAt: Date.now() }));
+      if (stateBuffer.length > 20) stateBuffer.shift();
+    });
+
+    socket.on('player:eliminated', function(data) {
+      if (data.playerId === localPlayerId) {
+        statusMsg.textContent = 'You were eliminated! Lives remaining: ' + data.livesRemaining;
+      }
+    });
+
+    socket.on('bomb:explode', function(data) {
+      explosions.push({ position: data.position, startTime: Date.now(), duration: 600, radius: 120 });
+    });
+
+    socket.on('match:end', function(data) {
+      inGame = false;
+      gameOverScreen.style.display = 'flex';
+      var winnerNameEl = document.getElementById('winnerName');
+      if (data.winnerId === 'draw') {
+        winnerNameEl.textContent = "It's a Draw!";
+      } else if (data.winnerId === localPlayerId) {
+        winnerNameEl.textContent = '🏆 You Win!';
+      } else {
+        winnerNameEl.textContent = 'Winner: ' + data.winnerName;
+      }
+    });
+
+    socket.on('player:disconnect', function() {
+      statusMsg.textContent = 'A player disconnected.';
+    });
+
+    socket.on('match:queued', function(data) {
+      queueMsg.style.display = 'block';
+      queueMsg.textContent = data.message;
+    });
+  }
+
+  // ── Lobby UI ─────────────────────────────────────────────────────────────────
+  document.getElementById('joinBtn').addEventListener('click', function() {
+    var name = nicknameInput.value.trim() || 'Player' + Math.floor(Math.random() * 1000);
+    var mode = modeSelect.value;
+    socket.emit('room:join', { roomId: roomId, name: name, mode: mode });
+  });
+
+  readyBtn.addEventListener('click', function() {
+    socket.emit('player:ready');
+    readyBtn.disabled = true;
+    readyBtn.textContent = '\u231B Waiting...';
+  });
+
+  function escHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function updatePlayerList(players) {
+    playerListDiv.innerHTML = '<div style="color:#aaa;font-size:0.85rem;margin-bottom:6px;">Players in Room:</div>';
+    players.forEach(function(p) {
+      var el = document.createElement('div');
+      el.className = 'player-entry';
+      var isReady = p.status === 'ready' || p.status === 'alive';
+      el.innerHTML =
+        '<div class="player-dot" style="background:' + (p.color || '#888') + '"></div>' +
+        '<span>' + escHtml(p.name) + (p.id === localPlayerId ? ' (you)' : '') + '</span>' +
+        '<span class="ready-badge ' + (isReady ? 'ready-yes' : 'ready-no') + '">' + (isReady ? 'Ready' : 'Waiting') + '</span>';
+      playerListDiv.appendChild(el);
+    });
+  }
+
+  // ── Interpolation ─────────────────────────────────────────────────────────
+  function lerp(a, b, t) { return a + (b - a) * t; }
+
+  function getInterpolatedState() {
+    var now = Date.now() - INTERPOLATION_DELAY;
+    if (stateBuffer.length === 0) return null;
+    if (stateBuffer.length === 1) return stateBuffer[0];
+
+    var older = null, newer = null;
+    for (var i = stateBuffer.length - 1; i >= 0; i--) {
+      if (stateBuffer[i].receivedAt <= now) { older = stateBuffer[i]; break; }
+      newer = stateBuffer[i];
+    }
+    if (!older) return stateBuffer[0];
+    if (!newer) return stateBuffer[stateBuffer.length - 1];
+
+    var t = Math.min(1, (now - older.receivedAt) / (newer.receivedAt - older.receivedAt || 1));
+    var players = newer.players.map(function(np) {
+      var op = older.players.find(function(p) { return p.id === np.id; });
+      if (!op) return np;
+      return Object.assign({}, np, {
+        position: {
+          x: lerp(op.position.x, np.position.x, t),
+          y: lerp(op.position.y, np.position.y, t),
+        }
+      });
+    });
+    return Object.assign({}, newer, { players: players });
+  }
+
+  // ── Renderer ─────────────────────────────────────────────────────────────────
+  function drawBackground() {
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    for (var i = 0; i < 80; i++) {
+      var sx = (i * 137.5 + 50) % CANVAS_W;
+      var sy = (i * 97.3 + 30) % CANVAS_H;
+      ctx.fillRect(sx, sy, 1, 1);
+    }
+  }
+
+  function drawPlatforms(platforms) {
+    for (var i = 0; i < platforms.length; i++) {
+      var p = platforms[i];
+      if (p.type === 'solid') {
+        var grad = ctx.createLinearGradient(p.x, p.y, p.x, p.y + p.height);
+        grad.addColorStop(0, '#4a4e69');
+        grad.addColorStop(1, '#22223b');
+        ctx.fillStyle = grad;
+        ctx.fillRect(p.x, p.y, p.width, p.height);
+        ctx.strokeStyle = '#9a8c98';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(p.x, p.y, p.width, p.height);
+        ctx.fillStyle = '#6c6f8b';
+        ctx.fillRect(p.x, p.y, p.width, 4);
+      } else {
+        ctx.fillStyle = '#c9a227';
+        ctx.fillRect(p.x, p.y, p.width, p.height);
+        ctx.fillStyle = '#ffd166';
+        ctx.fillRect(p.x, p.y, p.width, 5);
+      }
+    }
+  }
+
+  function drawPlayers(players, localId) {
+    var now = Date.now();
+    for (var i = 0; i < players.length; i++) {
+      var p = players[i];
+      if (p.status === 'eliminated') continue;
+      if (p.status === 'respawning') {
+        ctx.globalAlpha = 0.3;
+      } else if (p.invulnerableUntil > now) {
+        ctx.globalAlpha = 0.5 + 0.5 * Math.sin(now * 0.02);
+      } else {
+        ctx.globalAlpha = 1.0;
+      }
+
+      var x = p.position.x, y = p.position.y;
+      var col = p.color || '#888';
+
+      ctx.shadowColor = col;
+      ctx.shadowBlur = p.id === localId ? 12 : 4;
+
+      ctx.fillStyle = col;
+      ctx.fillRect(x, y, PLAYER_W, PLAYER_H);
+
+      ctx.fillStyle = '#222';
+      var eyeX = p.facing === 'right' ? x + 25 : x + 8;
+      ctx.fillRect(eyeX, y + 14, 7, 7);
+
+      if (p.isBlocking) {
+        ctx.strokeStyle = '#00ffff';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(x - 4, y - 4, PLAYER_W + 8, PLAYER_H + 8);
+      }
+
+      if (p.id === localId) {
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, PLAYER_W, PLAYER_H);
+      }
+
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1.0;
+
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 12px Segoe UI';
+      ctx.textAlign = 'center';
+      ctx.fillText(p.name, x + PLAYER_W / 2, y - 18);
+
+      var dmgColor = p.currentDamage > 100 ? '#ff4444' : p.currentDamage > 50 ? '#ff8800' : '#ffffff';
+      ctx.fillStyle = dmgColor;
+      ctx.font = 'bold 14px Segoe UI';
+      ctx.fillText(Math.round(p.currentDamage) + '%', x + PLAYER_W / 2, y - 4);
+    }
+    ctx.globalAlpha = 1.0;
+  }
+
+  function drawBombs(bombs) {
+    for (var i = 0; i < bombs.length; i++) {
+      var b = bombs[i];
+      ctx.save();
+      ctx.translate(b.position.x + 8, b.position.y + 8);
+      var flashRate = Math.max(0.1, b.fuseTimer / 3.0);
+      var flash = Math.sin(Date.now() * (1 / flashRate) * 0.01) > 0;
+      ctx.fillStyle = flash ? '#ff6600' : '#333';
+      ctx.beginPath();
+      ctx.arc(0, 0, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.strokeStyle = '#ffaa00';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, -10);
+      ctx.lineTo(4, -18);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  function drawExplosions(now) {
+    for (var i = explosions.length - 1; i >= 0; i--) {
+      var ex = explosions[i];
+      var t = (now - ex.startTime) / ex.duration;
+      if (t >= 1) { explosions.splice(i, 1); continue; }
+      ctx.save();
+      ctx.globalAlpha = 1 - t;
+      var r = ex.radius * t;
+      var grad = ctx.createRadialGradient(ex.position.x, ex.position.y, 0, ex.position.x, ex.position.y, r);
+      grad.addColorStop(0, 'rgba(255,220,50,0.9)');
+      grad.addColorStop(0.4, 'rgba(255,100,0,0.6)');
+      grad.addColorStop(1, 'rgba(255,0,0,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(ex.position.x, ex.position.y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  function drawHUD(state) {
+    if (!currentMatch) return;
+    var players = state ? state.players : (currentMatch.players || []);
+    var mode = currentMatch.mode || 'stock';
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(0, 0, CANVAS_W, 50);
+    ctx.restore();
+
+    var xi = 20;
+    for (var i = 0; i < players.length; i++) {
+      var p = players[i];
+      if (p.status === 'eliminated') continue;
+      ctx.fillStyle = p.color || '#888';
+      ctx.font = 'bold 13px Segoe UI';
+      ctx.textAlign = 'left';
+      ctx.fillText(p.name, xi, 20);
+      var dmgCol = p.currentDamage > 100 ? '#ff4444' : p.currentDamage > 50 ? '#ff8800' : '#fff';
+      ctx.fillStyle = dmgCol;
+      ctx.font = 'bold 16px Segoe UI';
+      ctx.fillText(Math.round(p.currentDamage) + '%', xi, 40);
+      if (mode === 'stock') {
+        ctx.fillStyle = '#ffaa00';
+        ctx.font = '12px Segoe UI';
+        var hearts = '';
+        for (var h = 0; h < Math.max(0, p.currentLives); h++) hearts += '\u2665';
+        ctx.fillText(hearts, xi + 36, 40);
+      }
+      xi += 120;
+    }
+  }
+
+  function drawBlastZoneIndicators() {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,50,50,0.3)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([8, 6]);
+    ctx.strokeRect(2, 2, CANVAS_W - 4, CANVAS_H - 4);
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  // ── Game Loop ─────────────────────────────────────────────────────────────
+  function gameLoop() {
+    requestAnimationFrame(gameLoop);
+    var now = Date.now();
+
+    if (!inGame) {
+      drawBackground();
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      return;
+    }
+
+    // Send input to server
+    var inputStr = JSON.stringify(localInput);
+    var lastStr = JSON.stringify(lastInputSent);
+    if (inputStr !== lastStr) {
+      socket.emit('input:update', Object.assign({}, localInput));
+      lastInputSent = Object.assign({}, localInput);
+    }
+
+    if (localInput.attack && !attackPressed) {
+      socket.emit('player:attack');
+    }
+    attackPressed = localInput.attack;
+
+    if (localInput.throwBomb && !bombPressed) {
+      socket.emit('player:throwBomb');
+    }
+    bombPressed = localInput.throwBomb;
+
+    socket.emit('player:block', localInput.block);
+
+    var state = getInterpolatedState();
+
+    drawBackground();
+    if (currentMatch) drawPlatforms(currentMatch.map.platforms);
+    drawBlastZoneIndicators();
+
+    if (state) {
+      drawBombs(state.bombs || []);
+      drawPlayers(state.players, localPlayerId);
+    } else if (currentMatch) {
+      drawPlayers(currentMatch.players, localPlayerId);
+    }
+
+    drawExplosions(now);
+    drawHUD(state);
+  }
+
+  // ── Init ────────────────────────────────────────────────────────────────────
+  connectSocket();
+  gameLoop();
+
+  nicknameInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') document.getElementById('joinBtn').click();
+  });
+})();
+</script>
+</body>
+</html>
