@@ -493,6 +493,7 @@
         if (state.crumblingPlatforms) currentMatch._crumblingPlatforms = state.crumblingPlatforms;
         if (state.items) currentMatch.items = state.items;
         if (state.projectiles) currentMatch.projectiles = state.projectiles;
+        if (state.platforms) currentMatch.map.platforms = state.platforms;
       }
       if (state.lavaY !== undefined) currentLavaY = state.lavaY;
       // Detect local player landing – play a subtle thud
@@ -520,6 +521,10 @@
     socket.on('bomb:explode', function(data) {
       explosions.push({ position: data.position, startTime: Date.now(), duration: 600, radius: 120 });
       sounds.explosion();
+    });
+
+    socket.on('platforms:generated', function(data) {
+      // Full platform list is kept in sync via state:update; this event is for future effects
     });
 
     socket.on('item:pickup', function(data) {

@@ -1,8 +1,13 @@
 import { Player } from '../../shared/types';
 import { getCharacter } from '../../shared/characters';
 
-const BASE_KNOCKBACK_MELEE = 200;
-const BASE_KNOCKBACK_BOMB = 350;
+const BASE_KNOCKBACK_MELEE = 350;
+const BASE_KNOCKBACK_BOMB = 500;
+// Scaling factors for the exponential knockback curve:
+// magnitude = base * (1 + (damage/DAMAGE_SCALE) * (1 + damage/DAMAGE_EXP))
+// At 0%: 1x, 50%: ~1.94x, 100%: ~3.13x, 150%: ~5.16x, 200%: ~7.5x
+const DAMAGE_SCALE = 80;
+const DAMAGE_EXP = 200;
 
 export function calculateKnockback(
   attacker: Player,
@@ -21,7 +26,8 @@ export function calculateKnockback(
   const targetChar = getCharacter(target.character);
   const weightFactor = targetChar ? (1 / targetChar.weight) : 1.0;
 
-  const magnitude = baseKnockback * (1 + target.currentDamage / 100) * attackModifier * shieldBonus * weightFactor;
+  const damagePct = target.currentDamage;
+  const magnitude = baseKnockback * (1 + (damagePct / DAMAGE_SCALE) * (1 + damagePct / DAMAGE_EXP)) * attackModifier * shieldBonus * weightFactor;
 
   // Direction: away from attacker
   let dx = target.position.x - attacker.position.x;
@@ -47,7 +53,8 @@ export function calculateBombKnockback(
   target: Player,
   attackModifier: number
 ): { x: number; y: number } {
-  const magnitude = BASE_KNOCKBACK_BOMB * (1 + target.currentDamage / 100) * attackModifier;
+  const damagePct = target.currentDamage;
+  const magnitude = BASE_KNOCKBACK_BOMB * (1 + (damagePct / DAMAGE_SCALE) * (1 + damagePct / DAMAGE_EXP)) * attackModifier;
 
   let dx = target.position.x - bombPosition.x;
   let dy = target.position.y - bombPosition.y;
