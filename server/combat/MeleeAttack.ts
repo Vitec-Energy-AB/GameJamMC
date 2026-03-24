@@ -2,6 +2,7 @@ import { Player, HitResult } from '../../shared/types';
 import { applyDamage } from './DamageSystem';
 import { calculateKnockback } from './KnockbackCalculator';
 import { PLAYER_WIDTH, PLAYER_HEIGHT } from '../../shared/constants';
+import { getCharacter } from '../../shared/characters';
 
 const ATTACK_COOLDOWN = 500; // ms
 const BASE_DAMAGE = 15;
@@ -9,11 +10,22 @@ const ATTACK_MODIFIER = 1.0;
 const HITBOX_WIDTH = 60;
 const HITBOX_HEIGHT = 80;
 
-export function performAttack(attacker: Player, targets: Player[]): HitResult[] {
+export interface WeaponOverride {
+  damage: number;
+  knockbackModifier: number;
+}
+
+export function performAttack(attacker: Player, targets: Player[], weaponOverride?: WeaponOverride): HitResult[] {
   const now = Date.now();
   if ((attacker.attackCooldown ?? 0) > now) return [];
 
   attacker.attackCooldown = now + ATTACK_COOLDOWN;
+
+  const character = getCharacter(attacker.character);
+  const dmgMod = character ? character.dmgMod : 1.0;
+
+  const damage = (weaponOverride?.damage ?? BASE_DAMAGE) * dmgMod;
+  const attackModifier = weaponOverride?.knockbackModifier ?? ATTACK_MODIFIER;
 
   // Compute hitbox position based on facing
   const hitboxX = attacker.facing === 'right'
@@ -36,8 +48,8 @@ export function performAttack(attacker: Player, targets: Player[]): HitResult[] 
       hitboxY + HITBOX_HEIGHT > target.position.y
     ) {
       const blocked = target.isBlocking;
-      const damage = applyDamage(target, BASE_DAMAGE, blocked);
-      const knockback = calculateKnockback(attacker, target, BASE_DAMAGE, ATTACK_MODIFIER, 'melee');
+      const appliedDamage = applyDamage(target, damage, blocked);
+      const knockback = calculateKnockback(attacker, target, damage, attackModifier, 'melee');
 
       if (!blocked) {
         target.velocity.x += knockback.x;
@@ -49,7 +61,7 @@ export function performAttack(attacker: Player, targets: Player[]): HitResult[] 
         target.velocity.y += knockback.y * 0.2;
       }
 
-      results.push({ targetId: target.id, damage, knockback, blocked });
+      results.push({ targetId: target.id, damage: appliedDamage, knockback, blocked });
     }
   }
 

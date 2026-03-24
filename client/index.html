@@ -68,9 +68,27 @@
     .map-card .map-desc { font-size: 0.7rem; color: #aaa; margin-top: 4px; }
     .map-card .map-votes { font-size: 0.8rem; color: #f39c12; margin-top: 4px; }
     #selectedMapLabel { color: #27ae60; font-size: 0.9rem; text-align: center; margin-top: 6px; display: none; }
+    #charSection { margin-top: 12px; }
+    #charSection label { display: block; color: #aaa; font-size: 0.9rem; margin-bottom: 6px; }
+    .char-cards { display: flex; gap: 6px; flex-wrap: wrap; }
+    .char-card {
+      flex: 1; min-width: 90px; padding: 8px 6px; border-radius: 8px;
+      background: #0f3460; border: 2px solid transparent; cursor: pointer;
+      transition: border-color 0.2s; text-align: center;
+    }
+    .char-card:hover { border-color: #e94560; }
+    .char-card.selected { border-color: #e94560; }
+    .char-dot { width: 28px; height: 28px; border-radius: 6px; margin: 0 auto 4px; }
+    .char-name { font-weight: bold; font-size: 0.85rem; color: #eee; }
+    .char-desc { font-size: 0.65rem; color: #aaa; margin-top: 2px; }
+    #musicToggle { position: fixed; top: 8px; right: 12px; background: rgba(0,0,0,0.5);
+      color: #aaa; border: 1px solid #333; border-radius: 4px; padding: 4px 8px;
+      font-size: 0.7rem; cursor: pointer; z-index: 30; }
   </style>
 </head>
 <body>
+
+<button id="musicToggle">&#x1F3B5; Music: OFF</button>
 
 <canvas id="gameCanvas" width="1200" height="700"></canvas>
 
@@ -84,7 +102,32 @@
         <label for="nicknameInput">Your Nickname</label>
         <input type="text" id="nicknameInput" placeholder="Enter nickname..." maxlength="20" />
       </div>
-      <div class="form-row">
+      <div id="charSection">
+        <label>Choose Character</label>
+        <div class="char-cards" id="charCards">
+          <div class="char-card selected" data-char="bjork">
+            <div class="char-dot" style="background:#4CAF50;"></div>
+            <div class="char-name">Bjork</div>
+            <div class="char-desc">Balanced</div>
+          </div>
+          <div class="char-card" data-char="gnista">
+            <div class="char-dot" style="background:#FF9800;"></div>
+            <div class="char-name">Gnista</div>
+            <div class="char-desc">Fast &amp; light</div>
+          </div>
+          <div class="char-card" data-char="malm">
+            <div class="char-dot" style="background:#795548;"></div>
+            <div class="char-name">Malm</div>
+            <div class="char-desc">Heavy hitter</div>
+          </div>
+          <div class="char-card" data-char="dimma">
+            <div class="char-dot" style="background:#9C27B0;"></div>
+            <div class="char-name">Dimma</div>
+            <div class="char-desc">Triple jump</div>
+          </div>
+        </div>
+      </div>
+      <div class="form-row" style="margin-top:10px;">
         <label for="modeSelect">Game Mode</label>
         <select id="modeSelect">
           <option value="stock">Stock (3 Lives)</option>
@@ -109,7 +152,7 @@
     <div id="playerList"></div>
 
     <div id="controls">
-      Move: &larr; &rarr; (or A D) &nbsp;|&nbsp; Jump: &uarr; / W / Space &nbsp;|&nbsp; Attack: Z &nbsp;|&nbsp; Block: C &nbsp;|&nbsp; Throw Bomb: B &nbsp;|&nbsp; Pickup Item: E &nbsp;|&nbsp; Use Weapon: Q / X
+      Move: &larr; &rarr; (or A D) &nbsp;|&nbsp; Jump: &uarr; / W / Space &nbsp;|&nbsp; Attack: Z &nbsp;|&nbsp; Block: C &nbsp;|&nbsp; Throw Bomb: B &nbsp;|&nbsp; Pickup Item: E &nbsp;|&nbsp; Use Weapon: Q / X &nbsp;|&nbsp; Music: M
     </div>
   </div>
 </div>
@@ -144,6 +187,8 @@
   var explosions = [];
   var availableMaps = [];
   var myMapVote = null;
+  var selectedCharacter = 'bjork';
+  var wasGrounded = {};
 
   // ── DOM Refs ────────────────────────────────────────────────────────────────
   var canvas = document.getElementById('gameCanvas');
@@ -165,7 +210,193 @@
 
   roomLabel.textContent = 'Room: ' + roomId;
 
+  // ── Audio ────────────────────────────────────────────────────────────────────
+  var audioCtx = null;
+  var musicOn = false;
+  var musicNodes = null;
+  var currentMapId = null;
+
+  function getAudioCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+  }
+
+  function playTone(freq, type, dur, vol, delay) {
+    try {
+      var ctx = getAudioCtx();
+      var t = ctx.currentTime + (delay || 0);
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.type = type || 'sine';
+      osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(vol || 0.3, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + dur);
+    } catch(e) {}
+  }
+
+  function playNoise(dur, vol, freq) {
+    try {
+      var ctx = getAudioCtx();
+      var bufSize = Math.floor(ctx.sampleRate * dur);
+      var buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+      var d = buf.getChannelData(0);
+      for (var i = 0; i < bufSize; i++) d[i] = (Math.random() * 2 - 1);
+      var src = ctx.createBufferSource();
+      src.buffer = buf;
+      var filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = freq || 200;
+      filter.Q.value = 1;
+      var gain = ctx.createGain();
+      gain.gain.setValueAtTime(vol || 0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+      src.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      src.start();
+      src.stop(ctx.currentTime + dur);
+    } catch(e) {}
+  }
+
+  var sounds = {
+    attack: function() {
+      playNoise(0.12, 0.15, 600);
+      playTone(350, 'sawtooth', 0.1, 0.1);
+    },
+    hit: function() {
+      playNoise(0.18, 0.3, 150);
+      playTone(120, 'square', 0.15, 0.25);
+    },
+    explosion: function() {
+      playNoise(0.6, 0.5, 80);
+      playTone(60, 'sawtooth', 0.4, 0.4);
+      playTone(40, 'sine', 0.5, 0.3, 0.05);
+    },
+    jump: function() {
+      playTone(400, 'sine', 0.15, 0.2);
+      playTone(600, 'sine', 0.1, 0.15, 0.07);
+    },
+    eliminated: function() {
+      playTone(660, 'sine', 0.12, 0.3);
+      playTone(550, 'sine', 0.12, 0.3, 0.12);
+      playTone(440, 'sine', 0.12, 0.3, 0.24);
+      playTone(330, 'sine', 0.3, 0.3, 0.36);
+    },
+    countdown: function() {
+      playTone(880, 'square', 0.1, 0.2);
+    },
+    win: function() {
+      var notes = [523, 659, 784, 1047];
+      notes.forEach(function(n, i) { playTone(n, 'sine', 0.3, 0.4, i * 0.18); });
+      notes.forEach(function(n, i) { playTone(n * 2, 'triangle', 0.2, 0.25, 0.72 + i * 0.12); });
+    },
+    pickup: function() {
+      playTone(1200, 'sine', 0.08, 0.2);
+      playTone(1600, 'sine', 0.08, 0.2, 0.08);
+    },
+  };
+
+  var MAP_MUSIC_THEMES = {
+    'test-arena': { baseFreq: 110, rootNote: 'A' },
+    'steel-works': { baseFreq: 130, rootNote: 'C' },
+    'volcano-peak': { baseFreq: 82, rootNote: 'E' },
+  };
+
+  function stopMusic() {
+    if (musicNodes) {
+      try { musicNodes.forEach(function(n) { n.stop(); }); } catch(e) {}
+      musicNodes = null;
+    }
+  }
+
+  function startMusic(mapId) {
+    if (!musicOn) return;
+    stopMusic();
+    try {
+      var ctx = getAudioCtx();
+      var theme = MAP_MUSIC_THEMES[mapId] || MAP_MUSIC_THEMES['test-arena'];
+      var base = theme.baseFreq;
+      // Simple drone + rhythm loop
+      var nodes = [];
+
+      // Drone (pad)
+      var droneOsc = ctx.createOscillator();
+      droneOsc.type = 'sawtooth';
+      droneOsc.frequency.value = base;
+      var droneGain = ctx.createGain();
+      droneGain.gain.value = 0.04;
+      var droneFilter = ctx.createBiquadFilter();
+      droneFilter.type = 'lowpass';
+      droneFilter.frequency.value = 400;
+      droneOsc.connect(droneFilter);
+      droneFilter.connect(droneGain);
+      droneGain.connect(ctx.destination);
+      droneOsc.start();
+      nodes.push(droneOsc);
+
+      // Fifth interval
+      var fifth = ctx.createOscillator();
+      fifth.type = 'triangle';
+      fifth.frequency.value = base * 1.5;
+      var fifthGain = ctx.createGain();
+      fifthGain.gain.value = 0.025;
+      fifth.connect(fifthGain);
+      fifthGain.connect(ctx.destination);
+      fifth.start();
+      nodes.push(fifth);
+
+      // Rhythm pulse (LFO-modulated)
+      var rhythmOsc = ctx.createOscillator();
+      rhythmOsc.type = 'square';
+      rhythmOsc.frequency.value = base * 2;
+      var lfo = ctx.createOscillator();
+      lfo.type = 'square';
+      lfo.frequency.value = 2.5;
+      var lfoGain = ctx.createGain();
+      lfoGain.gain.value = 0.015;
+      lfo.connect(lfoGain);
+      lfoGain.connect(rhythmOsc.frequency);
+      var rhythmGain = ctx.createGain();
+      rhythmGain.gain.value = 0.02;
+      rhythmOsc.connect(rhythmGain);
+      rhythmGain.connect(ctx.destination);
+      rhythmOsc.start();
+      lfo.start();
+      nodes.push(rhythmOsc);
+      nodes.push(lfo);
+
+      musicNodes = nodes;
+    } catch(e) {}
+  }
+
+  function setMusicOn(on) {
+    musicOn = on;
+    document.getElementById('musicToggle').textContent = '\uD83C\uDFB5 Music: ' + (on ? 'ON' : 'OFF');
+    if (on && inGame) {
+      startMusic(currentMapId);
+    } else {
+      stopMusic();
+    }
+  }
+
+  document.getElementById('musicToggle').addEventListener('click', function() {
+    setMusicOn(!musicOn);
+  });
+
   // ── Input ───────────────────────────────────────────────────────────────────
+  // Character card selection
+  document.querySelectorAll('.char-card').forEach(function(card) {
+    card.addEventListener('click', function() {
+      selectedCharacter = card.dataset.char;
+      document.querySelectorAll('.char-card').forEach(function(c) { c.classList.remove('selected'); });
+      card.classList.add('selected');
+    });
+  });
+
   window.addEventListener('keydown', function(e) {
     switch (e.code) {
       case 'ArrowLeft': case 'KeyA': localInput.left = true; break;
@@ -176,6 +407,7 @@
       case 'KeyB': localInput.throwBomb = true; break;
       case 'KeyE': localInput.pickup = true; break;
       case 'KeyQ': case 'KeyX': localInput.useWeapon = true; break;
+      case 'KeyM': setMusicOn(!musicOn); break;
     }
   });
   window.addEventListener('keyup', function(e) {
@@ -229,7 +461,9 @@
       countdownDiv.style.display = 'block';
       countdownDiv.textContent = data.count;
       readyBtn.style.display = 'none';
+      sounds.countdown();
       if (data.selectedMap) {
+        currentMapId = data.selectedMap;
         var mapEntry = availableMaps.find(function(m) { return m.id === data.selectedMap; });
         if (mapEntry) {
           selectedMapLabel.style.display = 'block';
@@ -244,6 +478,9 @@
       lobbyOverlay.style.display = 'none';
       countdownDiv.style.display = 'none';
       stateBuffer = [];
+      wasGrounded = {};
+      if (!currentMapId && match.selectedMap) currentMapId = match.selectedMap;
+      startMusic(currentMapId || 'test-arena');
     });
 
     socket.on('state:update', function(state) {
@@ -256,20 +493,41 @@
         if (state.items) currentMatch.items = state.items;
         if (state.projectiles) currentMatch.projectiles = state.projectiles;
       }
+      // Detect local player landing – play a subtle thud
+      if (localPlayerId && state.players) {
+        var lp = state.players.find(function(p) { return p.id === localPlayerId; });
+        if (lp) {
+          var wasG = wasGrounded[localPlayerId];
+          if (!wasG && lp.isGrounded) { playTone(80, 'sine', 0.08, 0.12); }
+          wasGrounded[localPlayerId] = lp.isGrounded;
+        }
+      }
     });
 
     socket.on('player:eliminated', function(data) {
+      sounds.eliminated();
       if (data.playerId === localPlayerId) {
         statusMsg.textContent = 'You were eliminated! Lives remaining: ' + data.livesRemaining;
       }
     });
 
+    socket.on('player:hit', function() {
+      sounds.hit();
+    });
+
     socket.on('bomb:explode', function(data) {
       explosions.push({ position: data.position, startTime: Date.now(), duration: 600, radius: 120 });
+      sounds.explosion();
+    });
+
+    socket.on('item:pickup', function(data) {
+      if (data.playerId === localPlayerId) sounds.pickup();
     });
 
     socket.on('match:end', function(data) {
       inGame = false;
+      stopMusic();
+      if (data.winnerId === localPlayerId) sounds.win();
       gameOverScreen.style.display = 'flex';
       var winnerNameEl = document.getElementById('winnerName');
       if (data.winnerId === 'draw') {
@@ -362,7 +620,7 @@
   document.getElementById('joinBtn').addEventListener('click', function() {
     var name = nicknameInput.value.trim() || 'Player' + Math.floor(Math.random() * 1000);
     var mode = modeSelect.value;
-    socket.emit('room:join', { roomId: roomId, name: name, mode: mode });
+    socket.emit('room:join', { roomId: roomId, name: name, mode: mode, character: selectedCharacter });
   });
 
   readyBtn.addEventListener('click', function() {
@@ -786,8 +1044,14 @@
 
     if (localInput.attack && !attackPressed) {
       socket.emit('player:attack');
+      sounds.attack();
     }
     attackPressed = localInput.attack;
+
+    if (localInput.jump && !localInput._prevJump) {
+      sounds.jump();
+    }
+    localInput._prevJump = localInput.jump;
 
     if (localInput.throwBomb && !bombPressed) {
       socket.emit('player:throwBomb');
