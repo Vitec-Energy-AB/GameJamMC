@@ -94,7 +94,9 @@
 
 <div id="lobbyOverlay">
   <div class="lobby-box">
-    <h1>&#x2694;&#xFE0F; Platform Fighter</h1>
+    <div style="text-align: center; margin-bottom: 16px;">
+      <img src="../Resources/Titel.png" alt="Platform Fighter" style="max-width: 100%; height: auto; border-radius: 8px;" />
+    </div>
     <h2 id="roomLabel">Room: loading...</h2>
 
     <div id="joinSection">
@@ -170,6 +172,73 @@
   var PLAYER_W = 40, PLAYER_H = 60;
   var CANVAS_W = 1200, CANVAS_H = 700;
   var INTERPOLATION_DELAY = 100; // ms
+
+  // ── Sprite Loading ──────────────────────────────────────────────────────────
+  var sprites = {};
+  var spritesLoaded = false;
+
+  var spriteList = {
+    // Player animations
+    'PlayerIdle': '../Sprites/PlayerIdle.png',
+    'PlayerRun': '../Sprites/PlayerRun.png',
+    'PlayerJump': '../Sprites/PlayerJump.png',
+    'PlayerFall': '../Sprites/PlayerFall.png',
+    'PlayerAttack': '../Sprites/PlayerAttack.png',
+    'PlayerShield': '../Sprites/PlayerShield.png',
+    'PlayerThrowBomb': '../Sprites/PlayerThrowBomb.png',
+    'PlayerHit': '../Sprites/PlayerHit.png',
+    // Effects
+    'Jump_Effect': '../Sprites/Jump_Effect.png',
+    'Landing_Dust': '../Sprites/Landing_Dust.png',
+    'Respawn': '../Sprites/Respawn.png',
+    'Spawn': '../Sprites/Spawn.png',
+    'Throwback_Trail': '../Sprites/Throwback_Trail.png',
+    // Items and weapons
+    'Bomb': '../Sprites/Bomb.png',
+    'BombExplosion': '../Sprites/BombExplosion.png',
+    'Sword': '../Sprites/Sword.png',
+    'FireAxe': '../Sprites/FireAxe.png',
+    'LaserGun': '../Sprites/LaserGun.png',
+    'PowerUp': '../Sprites/PowerUp.png',
+    // Platforms
+    'Tile_Platform': '../Sprites/Tile_Platform.png',
+    'Tile_Platform_vegetables': '../Sprites/Tile_Platform_vegetables.png',
+    // Backgrounds
+    'Background_Cave': '../Sprites/Background_Cave.png',
+    'Background_Factory': '../Sprites/Background_Factory.png',
+    'Background_Forest': '../Sprites/Background_Forest.png',
+    'Background_Volcano': '../Sprites/Background_Volcano.png',
+    // Enemies
+    'Bat': '../Sprites/Bat.png'
+  };
+
+  function loadSprites(callback) {
+    var loadedCount = 0;
+    var totalSprites = Object.keys(spriteList).length;
+
+    for (var name in spriteList) {
+      var img = new Image();
+      img.onload = function() {
+        loadedCount++;
+        if (loadedCount === totalSprites) {
+          spritesLoaded = true;
+          if (callback) callback();
+        }
+      };
+      img.onerror = function(name) {
+        return function() {
+          console.warn('Failed to load sprite: ' + name);
+          loadedCount++;
+          if (loadedCount === totalSprites) {
+            spritesLoaded = true;
+            if (callback) callback();
+          }
+        };
+      }(name);
+      img.src = spriteList[name];
+      sprites[name] = img;
+    }
+  }
 
   // ── State ───────────────────────────────────────────────────────────────────
   var roomId = (window.location.pathname.split('/')[1] || 'lobby').replace(/[^a-zA-Z0-9_-]/g, '') || 'lobby';
@@ -688,6 +757,26 @@
   function drawBackground() {
     ctx.fillStyle = '#1a1a2e';
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+    // Draw background sprite if available and we have a map selected
+    if (spritesLoaded && currentMapId) {
+      var bgSprite = null;
+      if (currentMapId === 'volcano-peak' && sprites['Background_Volcano']) {
+        bgSprite = sprites['Background_Volcano'];
+      } else if (currentMapId === 'steel-works' && sprites['Background_Factory']) {
+        bgSprite = sprites['Background_Factory'];
+      } else if (sprites['Background_Cave']) {
+        bgSprite = sprites['Background_Cave'];
+      }
+
+      if (bgSprite && bgSprite.complete) {
+        ctx.globalAlpha = 0.6;
+        ctx.drawImage(bgSprite, 0, 0, CANVAS_W, CANVAS_H);
+        ctx.globalAlpha = 1.0;
+      }
+    }
+
+    // Stars overlay
     ctx.fillStyle = 'rgba(255,255,255,0.3)';
     for (var i = 0; i < 80; i++) {
       var sx = (i * 137.5 + 50) % CANVAS_W;
@@ -700,19 +789,50 @@
     for (var i = 0; i < platforms.length; i++) {
       var p = platforms[i];
       if (p.type === 'solid') {
-        var grad = ctx.createLinearGradient(p.x, p.y, p.x, p.y + p.height);
-        grad.addColorStop(0, '#4a4e69');
-        grad.addColorStop(1, '#22223b');
-        ctx.fillStyle = grad;
-        ctx.fillRect(p.x, p.y, p.width, p.height);
+        // Try to use sprite if available
+        if (spritesLoaded && sprites['Tile_Platform'] && sprites['Tile_Platform'].complete) {
+          var sprite = sprites['Tile_Platform'];
+          // Tile the sprite across the platform
+          var pattern = ctx.createPattern(sprite, 'repeat');
+          if (pattern) {
+            ctx.fillStyle = pattern;
+            ctx.fillRect(p.x, p.y, p.width, p.height);
+          } else {
+            // Fallback to gradient
+            var grad = ctx.createLinearGradient(p.x, p.y, p.x, p.y + p.height);
+            grad.addColorStop(0, '#4a4e69');
+            grad.addColorStop(1, '#22223b');
+            ctx.fillStyle = grad;
+            ctx.fillRect(p.x, p.y, p.width, p.height);
+          }
+        } else {
+          var grad = ctx.createLinearGradient(p.x, p.y, p.x, p.y + p.height);
+          grad.addColorStop(0, '#4a4e69');
+          grad.addColorStop(1, '#22223b');
+          ctx.fillStyle = grad;
+          ctx.fillRect(p.x, p.y, p.width, p.height);
+        }
         ctx.strokeStyle = '#9a8c98';
         ctx.lineWidth = 2;
         ctx.strokeRect(p.x, p.y, p.width, p.height);
         ctx.fillStyle = '#6c6f8b';
         ctx.fillRect(p.x, p.y, p.width, 4);
       } else {
-        ctx.fillStyle = '#c9a227';
-        ctx.fillRect(p.x, p.y, p.width, p.height);
+        // Try to use vegetable platform sprite
+        if (spritesLoaded && sprites['Tile_Platform_vegetables'] && sprites['Tile_Platform_vegetables'].complete) {
+          var sprite = sprites['Tile_Platform_vegetables'];
+          var pattern = ctx.createPattern(sprite, 'repeat');
+          if (pattern) {
+            ctx.fillStyle = pattern;
+            ctx.fillRect(p.x, p.y, p.width, p.height);
+          } else {
+            ctx.fillStyle = '#c9a227';
+            ctx.fillRect(p.x, p.y, p.width, p.height);
+          }
+        } else {
+          ctx.fillStyle = '#c9a227';
+          ctx.fillRect(p.x, p.y, p.width, p.height);
+        }
         ctx.fillStyle = '#ffd166';
         ctx.fillRect(p.x, p.y, p.width, 5);
       }
@@ -760,6 +880,11 @@
     steelclub: '🪃', energyblade: '⚡', fireaxe: '🪓',
     lightningspear: '⚡', icecrystal: '❄️'
   };
+  var WEAPON_SPRITES = {
+    fireaxe: 'FireAxe',
+    sword: 'Sword',
+    lasergun: 'LaserGun'
+  };
   var POWERUP_COLORS = { shieldsplitter: '#e74c3c', lifecore: '#2ecc71' };
   var POWERUP_SYMBOLS = { shieldsplitter: '💥', lifecore: '💚' };
 
@@ -778,34 +903,56 @@
       ctx.save();
       ctx.globalAlpha = pulse;
       if ('type' in item && (item.type === 'shieldsplitter' || item.type === 'lifecore')) {
-        // Powerup
-        var pCol = POWERUP_COLORS[item.type] || '#fff';
-        ctx.shadowColor = pCol;
-        ctx.shadowBlur = 14;
-        ctx.fillStyle = pCol;
-        ctx.beginPath();
-        ctx.arc(x, y, 12, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#fff';
-        ctx.font = '14px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(POWERUP_SYMBOLS[item.type] || '?', x, y + 5);
+        // Powerup - use PowerUp sprite
+        if (spritesLoaded && sprites['PowerUp'] && sprites['PowerUp'].complete) {
+          var pCol = POWERUP_COLORS[item.type] || '#fff';
+          ctx.shadowColor = pCol;
+          ctx.shadowBlur = 14;
+          ctx.drawImage(sprites['PowerUp'], x - 16, y - 16, 32, 32);
+        } else {
+          var pCol = POWERUP_COLORS[item.type] || '#fff';
+          ctx.shadowColor = pCol;
+          ctx.shadowBlur = 14;
+          ctx.fillStyle = pCol;
+          ctx.beginPath();
+          ctx.arc(x, y, 12, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#fff';
+          ctx.font = '14px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(POWERUP_SYMBOLS[item.type] || '?', x, y + 5);
+        }
       } else {
-        // Weapon
-        var wCol = WEAPON_COLORS[item.type] || '#fff';
-        ctx.shadowColor = wCol;
-        ctx.shadowBlur = 10;
-        ctx.fillStyle = wCol;
-        ctx.fillRect(x - 10, y - 10, 20, 20);
-        ctx.fillStyle = '#222';
-        ctx.font = 'bold 10px Segoe UI';
-        ctx.textAlign = 'center';
-        // Rarity indicator
-        var rarityDot = item.rarity === 'rare' ? '#f1c40f' : item.rarity === 'uncommon' ? '#9b59b6' : '#aaa';
-        ctx.fillStyle = rarityDot;
-        ctx.beginPath();
-        ctx.arc(x + 8, y - 8, 4, 0, Math.PI * 2);
-        ctx.fill();
+        // Weapon - try to use sprite
+        var spriteName = WEAPON_SPRITES[item.type];
+        if (spritesLoaded && spriteName && sprites[spriteName] && sprites[spriteName].complete) {
+          var wCol = WEAPON_COLORS[item.type] || '#fff';
+          ctx.shadowColor = wCol;
+          ctx.shadowBlur = 10;
+          ctx.drawImage(sprites[spriteName], x - 20, y - 20, 40, 40);
+          // Rarity indicator
+          var rarityDot = item.rarity === 'rare' ? '#f1c40f' : item.rarity === 'uncommon' ? '#9b59b6' : '#aaa';
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = rarityDot;
+          ctx.beginPath();
+          ctx.arc(x + 14, y - 14, 4, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          // Fallback to colored box
+          var wCol = WEAPON_COLORS[item.type] || '#fff';
+          ctx.shadowColor = wCol;
+          ctx.shadowBlur = 10;
+          ctx.fillStyle = wCol;
+          ctx.fillRect(x - 10, y - 10, 20, 20);
+          ctx.fillStyle = '#222';
+          ctx.font = 'bold 10px Segoe UI';
+          ctx.textAlign = 'center';
+          var rarityDot = item.rarity === 'rare' ? '#f1c40f' : item.rarity === 'uncommon' ? '#9b59b6' : '#aaa';
+          ctx.fillStyle = rarityDot;
+          ctx.beginPath();
+          ctx.arc(x + 8, y - 8, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
       ctx.restore();
     }
@@ -846,6 +993,14 @@
       if (p.status === 'eliminated') continue;
       if (p.status === 'respawning') {
         ctx.globalAlpha = 0.3;
+        // Show respawn effect if available
+        if (spritesLoaded && sprites['Respawn'] && sprites['Respawn'].complete) {
+          var respawnSize = 80;
+          ctx.save();
+          ctx.globalAlpha = 0.7;
+          ctx.drawImage(sprites['Respawn'], p.position.x - 20, p.position.y - 10, respawnSize, respawnSize);
+          ctx.restore();
+        }
       } else if (p.invulnerableUntil > now) {
         ctx.globalAlpha = 0.5 + 0.5 * Math.sin(now * 0.02);
       } else {
@@ -870,12 +1025,44 @@
         ctx.shadowBlur = 20;
       }
 
-      ctx.fillStyle = col;
-      ctx.fillRect(x, y, PLAYER_W, PLAYER_H);
+      // Determine which sprite to use based on player state
+      var playerSprite = null;
+      if (spritesLoaded) {
+        if (p.isBlocking && sprites['PlayerShield'] && sprites['PlayerShield'].complete) {
+          playerSprite = sprites['PlayerShield'];
+        } else if (p.isAttacking && sprites['PlayerAttack'] && sprites['PlayerAttack'].complete) {
+          playerSprite = sprites['PlayerAttack'];
+        } else if (p.velocity && p.velocity.y < -2 && sprites['PlayerJump'] && sprites['PlayerJump'].complete) {
+          playerSprite = sprites['PlayerJump'];
+        } else if (p.velocity && p.velocity.y > 2 && sprites['PlayerFall'] && sprites['PlayerFall'].complete) {
+          playerSprite = sprites['PlayerFall'];
+        } else if (p.velocity && Math.abs(p.velocity.x) > 0.5 && sprites['PlayerRun'] && sprites['PlayerRun'].complete) {
+          playerSprite = sprites['PlayerRun'];
+        } else if (sprites['PlayerIdle'] && sprites['PlayerIdle'].complete) {
+          playerSprite = sprites['PlayerIdle'];
+        }
+      }
 
-      ctx.fillStyle = '#222';
-      var eyeX = p.facing === 'right' ? x + 25 : x + 8;
-      ctx.fillRect(eyeX, y + 14, 7, 7);
+      // Draw player sprite or fallback to colored rectangle
+      if (playerSprite) {
+        ctx.save();
+        // Flip sprite if facing left
+        if (p.facing === 'left') {
+          ctx.scale(-1, 1);
+          ctx.drawImage(playerSprite, -x - PLAYER_W, y, PLAYER_W, PLAYER_H);
+        } else {
+          ctx.drawImage(playerSprite, x, y, PLAYER_W, PLAYER_H);
+        }
+        ctx.restore();
+      } else {
+        // Fallback to colored rectangle
+        ctx.fillStyle = col;
+        ctx.fillRect(x, y, PLAYER_W, PLAYER_H);
+
+        ctx.fillStyle = '#222';
+        var eyeX = p.facing === 'right' ? x + 25 : x + 8;
+        ctx.fillRect(eyeX, y + 14, 7, 7);
+      }
 
       if (p.isBlocking) {
         ctx.strokeStyle = '#00ffff';
@@ -911,12 +1098,19 @@
       ctx.font = 'bold 14px Segoe UI';
       ctx.fillText(Math.round(p.currentDamage) + '%', x + PLAYER_W / 2, y - 4);
 
-      // Weapon icon on player
+      // Weapon icon on player - try to use weapon sprite
       if (p.currentWeapon) {
-        var wCol = WEAPON_COLORS[p.currentWeapon.type] || '#fff';
+        var spriteName = WEAPON_SPRITES[p.currentWeapon.type];
         var iconX = p.facing === 'right' ? x + PLAYER_W + 2 : x - 14;
-        ctx.fillStyle = wCol;
-        ctx.fillRect(iconX, y + 10, 12, 12);
+
+        if (spritesLoaded && spriteName && sprites[spriteName] && sprites[spriteName].complete) {
+          ctx.drawImage(sprites[spriteName], iconX - 4, y + 6, 20, 20);
+        } else {
+          var wCol = WEAPON_COLORS[p.currentWeapon.type] || '#fff';
+          ctx.fillStyle = wCol;
+          ctx.fillRect(iconX, y + 10, 12, 12);
+        }
+
         ctx.fillStyle = '#111';
         ctx.font = '8px sans-serif';
         ctx.textAlign = 'center';
@@ -931,21 +1125,32 @@
       var b = bombs[i];
       ctx.save();
       ctx.translate(b.position.x + 8, b.position.y + 8);
-      var flashRate = Math.max(0.1, b.fuseTimer / 3.0);
-      var flash = Math.sin(Date.now() * (1 / flashRate) * 0.01) > 0;
-      ctx.fillStyle = flash ? '#ff6600' : '#333';
-      ctx.beginPath();
-      ctx.arc(0, 0, 10, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.strokeStyle = '#ffaa00';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(0, -10);
-      ctx.lineTo(4, -18);
-      ctx.stroke();
+
+      // Try to use bomb sprite
+      if (spritesLoaded && sprites['Bomb'] && sprites['Bomb'].complete) {
+        var flashRate = Math.max(0.1, b.fuseTimer / 3.0);
+        var flash = Math.sin(Date.now() * (1 / flashRate) * 0.01) > 0;
+        ctx.globalAlpha = flash ? 1.0 : 0.7;
+        ctx.drawImage(sprites['Bomb'], -16, -16, 32, 32);
+        ctx.globalAlpha = 1.0;
+      } else {
+        // Fallback to original drawing
+        var flashRate = Math.max(0.1, b.fuseTimer / 3.0);
+        var flash = Math.sin(Date.now() * (1 / flashRate) * 0.01) > 0;
+        ctx.fillStyle = flash ? '#ff6600' : '#333';
+        ctx.beginPath();
+        ctx.arc(0, 0, 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.strokeStyle = '#ffaa00';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, -10);
+        ctx.lineTo(4, -18);
+        ctx.stroke();
+      }
       ctx.restore();
     }
   }
@@ -957,15 +1162,24 @@
       if (t >= 1) { explosions.splice(i, 1); continue; }
       ctx.save();
       ctx.globalAlpha = 1 - t;
-      var r = ex.radius * t;
-      var grad = ctx.createRadialGradient(ex.position.x, ex.position.y, 0, ex.position.x, ex.position.y, r);
-      grad.addColorStop(0, 'rgba(255,220,50,0.9)');
-      grad.addColorStop(0.4, 'rgba(255,100,0,0.6)');
-      grad.addColorStop(1, 'rgba(255,0,0,0)');
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(ex.position.x, ex.position.y, r, 0, Math.PI * 2);
-      ctx.fill();
+
+      // Try to use explosion sprite
+      if (spritesLoaded && sprites['BombExplosion'] && sprites['BombExplosion'].complete) {
+        var scale = t * 2.5;
+        var size = ex.radius * scale;
+        ctx.drawImage(sprites['BombExplosion'], ex.position.x - size/2, ex.position.y - size/2, size, size);
+      } else {
+        // Fallback to gradient
+        var r = ex.radius * t;
+        var grad = ctx.createRadialGradient(ex.position.x, ex.position.y, 0, ex.position.x, ex.position.y, r);
+        grad.addColorStop(0, 'rgba(255,220,50,0.9)');
+        grad.addColorStop(0.4, 'rgba(255,100,0,0.6)');
+        grad.addColorStop(1, 'rgba(255,0,0,0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(ex.position.x, ex.position.y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.restore();
     }
   }
@@ -1130,6 +1344,11 @@
   }
 
   // ── Init ────────────────────────────────────────────────────────────────────
+  // Load sprites first
+  loadSprites(function() {
+    console.log('Sprites loaded successfully');
+  });
+
   connectSocket();
   gameLoop();
 
