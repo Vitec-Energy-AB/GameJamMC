@@ -27,7 +27,7 @@ export interface WeaponItem {
 
 export interface PowerupItem {
   id: string;
-  type: 'shieldsplitter' | 'lifecore';
+  type: 'shieldsplitter' | 'lifecore' | 'forcefield';
   position: { x: number; y: number };
   active: boolean;
   spawnTime: number;
@@ -99,6 +99,7 @@ export interface Player {
   freezeUntil: number;
   shieldSplitterUntil: number;
   damageMitigation: number;
+  forceFieldUntil: number;
   isAttacking?: boolean;
   attackAnimUntil?: number;
 }

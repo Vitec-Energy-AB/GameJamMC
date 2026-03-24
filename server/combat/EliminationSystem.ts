@@ -36,6 +36,7 @@ export function respawnPlayer(player: Player, spawnPoints: { x: number; y: numbe
   player.isGrounded = false;
   player.jumpsRemaining = 2;
   player.invulnerableUntil = Date.now() + INVULNERABLE_DURATION;
+  player.forceFieldUntil = 0;
 }
 
 export function initPlayerLives(player: Player, mode: 'stock' | 'knockout'): void {

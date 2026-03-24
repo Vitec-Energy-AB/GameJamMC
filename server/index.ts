@@ -97,6 +97,7 @@ io.on('connection', (socket) => {
       freezeUntil: 0,
       shieldSplitterUntil: 0,
       damageMitigation: 0,
+      forceFieldUntil: 0,
       color: characterStats.color,
     };
 
