@@ -149,11 +149,12 @@ io.on('connection', (socket) => {
     // If player has a melee weapon, use its stats
     let weaponOverride: { damage: number; knockbackModifier: number } | undefined;
     if (player.currentWeapon && player.currentWeapon.category === 'melee') {
-      gameLoop.getItemSpawnManager().handleMeleeWeaponAttack(match, socket.id, io);
+      // Capture stats before handleMeleeWeaponAttack may null out currentWeapon on last durability hit
       weaponOverride = {
         damage: player.currentWeapon.damage,
         knockbackModifier: player.currentWeapon.knockbackModifier,
       };
+      gameLoop.getItemSpawnManager().handleMeleeWeaponAttack(match, socket.id, io);
     }
 
     const results = performAttack(player, match.players, weaponOverride);
