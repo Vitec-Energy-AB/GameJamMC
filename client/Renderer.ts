@@ -1,6 +1,6 @@
 import { Player, Platform, Bomb, Match } from '../shared/types';
 
-const PLAYER_W = 40, PLAYER_H = 60;
+const PLAYER_W = 80, PLAYER_H = 120;
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;

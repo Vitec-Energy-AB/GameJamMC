@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { WeaponItem, PowerupItem, SpawnedItem, Match, Player, Projectile } from '../../shared/types';
 import { Server } from 'socket.io';
+import { PLAYER_WIDTH, PLAYER_HEIGHT } from '../../shared/constants';
 
 const ITEM_DESPAWN_MS = 15000;
 const SPAWN_COOLDOWN_MS = 8000;
@@ -181,7 +182,7 @@ export class ItemSpawnManager {
     if (!player || player.status !== 'alive') return;
 
     const now = Date.now();
-    const PICKUP_RANGE = 40;
+    const PICKUP_RANGE = 60;
 
     for (let i = 0; i < match.items.length; i++) {
       const item = match.items[i];
@@ -192,8 +193,8 @@ export class ItemSpawnManager {
         if (item.pickedUpBy !== null) continue;
       }
 
-      const dx = player.position.x + 20 - item.position.x;
-      const dy = player.position.y + 30 - item.position.y;
+      const dx = player.position.x + PLAYER_WIDTH / 2 - item.position.x;
+      const dy = player.position.y + PLAYER_HEIGHT / 2 - item.position.y;
       if (Math.sqrt(dx * dx + dy * dy) > PICKUP_RANGE) continue;
 
       if ('pickedUpBy' in item) {
@@ -262,7 +263,7 @@ export class ItemSpawnManager {
       const projectile: Projectile = {
         id: uuidv4(),
         type: weapon.type as 'lightningspear' | 'icecrystal',
-        position: { x: player.position.x + 20, y: player.position.y + 20 },
+        position: { x: player.position.x + PLAYER_WIDTH / 2, y: player.position.y + PLAYER_HEIGHT / 2 },
         velocity: { x: dir * speed, y: 0 },
         thrownBy: playerId,
         damage: weapon.damage,
@@ -334,9 +335,9 @@ export class ItemSpawnManager {
         if (target.status !== 'alive') continue;
         if (target.invulnerableUntil > now) continue;
 
-        const dx = proj.position.x - (target.position.x + 20);
-        const dy = proj.position.y - (target.position.y + 30);
-        if (Math.abs(dx) < 25 && Math.abs(dy) < 35) {
+        const dx = proj.position.x - (target.position.x + PLAYER_WIDTH / 2);
+        const dy = proj.position.y - (target.position.y + PLAYER_HEIGHT / 2);
+        if (Math.abs(dx) < PLAYER_WIDTH / 2 && Math.abs(dy) < PLAYER_HEIGHT / 2) {
           // Hit!
           const baseDamage = proj.damage * (1 - (target.damageMitigation ?? 0));
           target.currentDamage += baseDamage;

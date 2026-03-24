@@ -36,6 +36,11 @@ export function respawnPlayer(player: Player, spawnPoints: { x: number; y: numbe
   player.isGrounded = false;
   player.jumpsRemaining = 2;
   player.invulnerableUntil = Date.now() + INVULNERABLE_DURATION;
+  player.currentDamage = 0;
+  player.currentWeapon = null;
+  player.freezeUntil = 0;
+  player.shieldSplitterUntil = 0;
+  player.damageMitigation = 0;
   player.forceFieldUntil = 0;
 }
 
