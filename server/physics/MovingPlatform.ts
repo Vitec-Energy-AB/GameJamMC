@@ -1,4 +1,5 @@
 import { Match, MovingPlatformState, Player } from '../../shared/types';
+import { PLAYER_WIDTH as PLAYER_W, PLAYER_HEIGHT as PLAYER_H } from '../../shared/constants';
 
 export function updateMovingPlatforms(match: Match, dt: number): void {
   for (const mp of match.movingPlatforms) {
@@ -26,8 +27,6 @@ export function updateMovingPlatforms(match: Match, dt: number): void {
 }
 
 function isPlayerOnPlatform(player: Player, mp: MovingPlatformState): boolean {
-  const PLAYER_W = 40;
-  const PLAYER_H = 60;
   const plat = mp.def.platform;
 
   const playerBottom = player.position.y + PLAYER_H;

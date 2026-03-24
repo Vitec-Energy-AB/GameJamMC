@@ -37,10 +37,6 @@ export function updateLava(match: Match, dt: number, io: Server): void {
 
   lava.currentY -= currentSpeed * dt;
 
-  if (lava.currentY < match.map.blastZones.top + 100) {
-    lava.currentY = match.map.blastZones.top + 100;
-  }
-
   for (const player of match.players) {
     if (player.status !== 'alive') continue;
 
