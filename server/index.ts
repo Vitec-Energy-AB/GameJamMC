@@ -213,7 +213,25 @@ io.on('connection', (socket) => {
     if (!roomId) return;
     const match = roomManager.getRoom(roomId);
     if (!match || match.state !== 'active') return;
-    gameLoop.getItemSpawnManager().handleUseWeapon(match, socket.id, io);
+    const player = match.players.find(p => p.id === socket.id);
+    if (!player || player.status !== 'alive') return;
+
+    if (player.currentWeapon && player.currentWeapon.category === 'melee') {
+      // Capture weapon stats before handleMeleeWeaponAttack may null out currentWeapon
+      const weaponOverride = {
+        damage: player.currentWeapon.damage,
+        knockbackModifier: player.currentWeapon.knockbackModifier,
+      };
+      // Decrement durability and apply weapon cooldown
+      gameLoop.getItemSpawnManager().handleMeleeWeaponAttack(match, socket.id, io);
+      const results = performAttack(player, match.players, weaponOverride);
+      if (results.length > 0) {
+        io.to(roomId).emit('player:hit', { results, type: 'melee', attackerId: socket.id });
+      }
+    } else {
+      // Thrown weapons: launch projectile
+      gameLoop.getItemSpawnManager().handleUseWeapon(match, socket.id, io);
+    }
   });
 
   socket.on('match:start', () => {
