@@ -259,6 +259,7 @@
   var myMapVote = null;
   var selectedCharacter = 'bjork';
   var wasGrounded = {};
+  var cameraY = 0;
 
   // ── DOM Refs ────────────────────────────────────────────────────────────────
   var canvas = document.getElementById('gameCanvas');
@@ -1293,23 +1294,38 @@
 
     var state = getInterpolatedState();
 
+    // Update camera to follow local player upward
+    if (state && localPlayerId) {
+      var lp = state.players.find(function(p) { return p.id === localPlayerId; });
+      if (lp) {
+        var targetCameraY = lp.position.y - CANVAS_H * 0.6;
+        if (targetCameraY > 0) targetCameraY = 0;
+        cameraY = cameraY + (targetCameraY - cameraY) * 0.08;
+      }
+    }
+
     drawBackground();
+
+    // Apply camera transform for all world-space objects
+    ctx.save();
+    ctx.translate(0, -cameraY);
+
     if (currentMatch) {
       drawPlatforms(currentMatch.map.platforms);
       drawMovingPlatforms(currentMatch._movingPlatforms);
       drawCrumblingPlatforms(currentMatch._crumblingPlatforms);
       drawItems(currentMatch.items);
     }
-    drawBlastZoneIndicators();
 
-    // Draw rising lava
-    if (currentLavaY !== null && currentLavaY < CANVAS_H) {
-      var lavaGradient = ctx.createLinearGradient(0, currentLavaY, 0, CANVAS_H);
+    // Draw rising lava (world-space)
+    if (currentLavaY !== null) {
+      var worldBottom = CANVAS_H - cameraY;
+      var lavaGradient = ctx.createLinearGradient(0, currentLavaY, 0, worldBottom);
       lavaGradient.addColorStop(0, 'rgba(255, 80, 0, 0.9)');
       lavaGradient.addColorStop(0.3, 'rgba(255, 40, 0, 0.85)');
       lavaGradient.addColorStop(1, 'rgba(180, 0, 0, 0.8)');
       ctx.fillStyle = lavaGradient;
-      ctx.fillRect(0, currentLavaY, CANVAS_W, CANVAS_H - currentLavaY);
+      ctx.fillRect(0, currentLavaY, CANVAS_W, worldBottom - currentLavaY);
 
       ctx.strokeStyle = 'rgba(255, 200, 50, ' + (0.6 + Math.sin(now / 200) * 0.3) + ')';
       ctx.lineWidth = 3;
@@ -1319,15 +1335,6 @@
         ctx.lineTo(lx, currentLavaY + Math.sin((lx + now / 100) * 0.05) * 4);
       }
       ctx.stroke();
-
-      if (currentLavaY < CANVAS_H * 0.7) {
-        ctx.save();
-        ctx.font = 'bold 16px "Segoe UI", sans-serif';
-        ctx.fillStyle = 'rgba(255, 100, 0, ' + (0.5 + Math.sin(now / 300) * 0.4) + ')';
-        ctx.textAlign = 'center';
-        ctx.fillText('\u26A0 LAVA RISING! \u26A0', CANVAS_W / 2, 30);
-        ctx.restore();
-      }
     }
 
     if (state) {
@@ -1340,6 +1347,21 @@
     }
 
     drawExplosions(now);
+
+    // Restore transform – HUD elements are drawn in screen-space
+    ctx.restore();
+
+    // Lava warning shown in screen-space when lava is close to the visible area
+    if (currentLavaY !== null && currentLavaY - cameraY < CANVAS_H * 0.7) {
+      ctx.save();
+      ctx.font = 'bold 16px "Segoe UI", sans-serif';
+      ctx.fillStyle = 'rgba(255, 100, 0, ' + (0.5 + Math.sin(now / 300) * 0.4) + ')';
+      ctx.textAlign = 'center';
+      ctx.fillText('\u26A0 LAVA RISING! \u26A0', CANVAS_W / 2, 30);
+      ctx.restore();
+    }
+
+    drawBlastZoneIndicators();
     drawHUD(state);
   }
 
