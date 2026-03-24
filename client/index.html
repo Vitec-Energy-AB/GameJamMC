@@ -374,9 +374,9 @@
   };
 
   var MAP_MUSIC_THEMES = {
-    'test-arena': { baseFreq: 110, rootNote: 'A' },
-    'steel-works': { baseFreq: 130, rootNote: 'C' },
-    'volcano-peak': { baseFreq: 82, rootNote: 'E' },
+    'testArena': { baseFreq: 110, rootNote: 'A' },
+    'steelWorks': { baseFreq: 130, rootNote: 'C' },
+    'volcanoPeak': { baseFreq: 82, rootNote: 'E' },
   };
 
   function stopMusic() {
@@ -391,7 +391,7 @@
     stopMusic();
     try {
       var ctx = getAudioCtx();
-      var theme = MAP_MUSIC_THEMES[mapId] || MAP_MUSIC_THEMES['test-arena'];
+      var theme = MAP_MUSIC_THEMES[mapId] || MAP_MUSIC_THEMES['testArena'];
       var base = theme.baseFreq;
       // Simple drone + rhythm loop
       var nodes = [];
@@ -553,7 +553,7 @@
       stateBuffer = [];
       wasGrounded = {};
       if (!currentMapId && match.selectedMap) currentMapId = match.selectedMap;
-      startMusic(currentMapId || 'test-arena');
+      startMusic(currentMapId || 'testArena');
     });
 
     socket.on('state:update', function(state) {
@@ -764,9 +764,9 @@
     // Draw background sprite if available and we have a map selected
     if (spritesLoaded && currentMapId) {
       var bgSprite = null;
-      if (currentMapId === 'volcano-peak' && sprites['Background_Volcano']) {
+      if (currentMapId === 'volcanoPeak' && sprites['Background_Volcano']) {
         bgSprite = sprites['Background_Volcano'];
-      } else if (currentMapId === 'steel-works' && sprites['Background_Factory']) {
+      } else if (currentMapId === 'steelWorks' && sprites['Background_Factory']) {
         bgSprite = sprites['Background_Factory'];
       } else if (sprites['Background_Cave']) {
         bgSprite = sprites['Background_Cave'];
