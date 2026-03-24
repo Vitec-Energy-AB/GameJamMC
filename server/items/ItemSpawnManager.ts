@@ -342,7 +342,8 @@ export class ItemSpawnManager {
           const baseDamage = proj.damage * (1 - (target.damageMitigation ?? 0));
           target.currentDamage += baseDamage;
 
-          const magnitude = 200 * (1 + target.currentDamage / 100) * proj.knockbackModifier *
+          const damagePct = target.currentDamage;
+          const magnitude = 350 * (1 + (damagePct / 80) * (1 + damagePct / 200)) * proj.knockbackModifier *
             (thrower && (thrower.shieldSplitterUntil ?? 0) > now ? 2 : 1);
           let kx = proj.velocity.x / (Math.abs(proj.velocity.x) || 1);
           let ky = -0.5;
