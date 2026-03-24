@@ -23,7 +23,7 @@ Exempel på vad du kan ändra:
 **Justera här innan start:**
 
 ```md
-Aktiv branch: BRANCH_NAME=game-branch
+Aktiv branch: main=game-branch
 Agenten ska skapa ett 2D-plattformsspel i Python med Pygame. Koden ska vara modulär och kommenterad på svenska.
 ```
 
