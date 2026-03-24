@@ -23,14 +23,14 @@ export function checkBombCollisions(bomb: Bomb, platforms: Platform[], dt: numbe
         bomb.velocity.x *= 0.5;
         bomb.velocity.y = -Math.abs(bomb.velocity.y) * 0.4;
         bomb.position.y = platform.y - bombSize;
-        return false;
+        return true;
       } else {
         // Passthrough - only stop from above
         if (bomb.velocity.y > 0 && bomb.position.y + bombSize - bomb.velocity.y * dt <= platform.y) {
           bomb.velocity.x *= 0.5;
           bomb.velocity.y = -Math.abs(bomb.velocity.y) * 0.4;
           bomb.position.y = platform.y - bombSize;
-          return false;
+          return true;
         }
       }
     }

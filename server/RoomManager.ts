@@ -2,7 +2,7 @@ import { Match, Player } from '../shared/types';
 import { testArena } from './maps/TestArena';
 
 const PLAYER_COLORS = [
-  '#FF4444', '#4444FF', '#44FF44', '#FFaa00',
+  '#FF4444', '#4444FF', '#44FF44', '#FFAA00',
   '#FF44FF', '#44FFFF', '#FF8844', '#8844FF',
   '#44FF88', '#FF4488',
 ];
