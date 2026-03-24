@@ -5,7 +5,7 @@ import { PLAYER_WIDTH, PLAYER_HEIGHT } from '../../shared/constants';
 import { getCharacter } from '../../shared/characters';
 
 const ATTACK_COOLDOWN = 500; // ms
-const BASE_DAMAGE = 15;
+const BASE_DAMAGE = 20;
 const ATTACK_MODIFIER = 1.0;
 const HITBOX_WIDTH = 100;
 const HITBOX_HEIGHT = 100;

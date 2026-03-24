@@ -76,6 +76,11 @@ export class GameLoop {
           continue;
         }
 
+        // Force field: keep player invulnerable while active
+        if ((player.forceFieldUntil ?? 0) > now) {
+          player.invulnerableUntil = Math.max(player.invulnerableUntil, now + 100);
+        }
+
         // Jump handling
         const prevJump = this.jumpPressed.get(player.id) ?? false;
         if (player.inputState.jump && !prevJump) {

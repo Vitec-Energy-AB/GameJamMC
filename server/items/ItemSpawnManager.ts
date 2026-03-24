@@ -27,8 +27,8 @@ const WEAPON_TEMPLATES: WeaponTemplate[] = [
   {
     type: 'steelclub',
     category: 'melee',
-    damage: 20,
-    knockbackModifier: 1.8,
+    damage: 30,
+    knockbackModifier: 2.2,
     attackCooldown: 600,
     durability: 8,
     ammo: 0,
@@ -37,8 +37,8 @@ const WEAPON_TEMPLATES: WeaponTemplate[] = [
   {
     type: 'lasergun',
     category: 'melee',
-    damage: 8,
-    knockbackModifier: 0.8,
+    damage: 14,
+    knockbackModifier: 1.2,
     attackCooldown: 200,
     durability: 15,
     ammo: 0,
@@ -47,8 +47,8 @@ const WEAPON_TEMPLATES: WeaponTemplate[] = [
   {
     type: 'fireaxe',
     category: 'melee',
-    damage: 15,
-    knockbackModifier: 1.2,
+    damage: 25,
+    knockbackModifier: 1.6,
     attackCooldown: 400,
     durability: 10,
     ammo: 0,
@@ -57,26 +57,26 @@ const WEAPON_TEMPLATES: WeaponTemplate[] = [
   {
     type: 'lightningspear',
     category: 'thrown',
-    damage: 18,
-    knockbackModifier: 1.3,
+    damage: 28,
+    knockbackModifier: 1.8,
     attackCooldown: 500,
     durability: 0,
     ammo: 3,
-    rarity: 'rare',
+    rarity: 'common',
   },
   {
     type: 'icecrystal',
     category: 'thrown',
-    damage: 12,
-    knockbackModifier: 1.0,
+    damage: 20,
+    knockbackModifier: 1.4,
     attackCooldown: 700,
     durability: 0,
     ammo: 2,
-    rarity: 'uncommon',
+    rarity: 'common',
   },
 ];
 
-const POWERUP_TYPES: PowerupType[] = ['shieldsplitter', 'lifecore'];
+const POWERUP_TYPES: PowerupType[] = ['shieldsplitter', 'lifecore', 'forcefield'];
 
 // Rarity weights: common=60, uncommon=30, rare=10
 const RARITY_WEIGHTS: Record<WeaponItem['rarity'], number> = {
@@ -235,6 +235,8 @@ export class ItemSpawnManager {
       // damageMitigation is a fraction [0, 1] that reduces incoming damage.
       // E.g. 0.3 = 30% reduction. Multiple pickups stack additively, capped at 1.0 (full immunity).
       player.damageMitigation = Math.min(1, (player.damageMitigation ?? 0) + 0.3);
+    } else if (powerup.type === 'forcefield') {
+      player.forceFieldUntil = now + 5000;
     }
   }
 

@@ -922,8 +922,8 @@
     lasergun: 'LaserGun',
     fireaxe: 'FireAxe'
   };
-  var POWERUP_COLORS = { shieldsplitter: '#e74c3c', lifecore: '#2ecc71' };
-  var POWERUP_SYMBOLS = { shieldsplitter: '💥', lifecore: '💚' };
+  var POWERUP_COLORS = { shieldsplitter: '#e74c3c', lifecore: '#2ecc71', forcefield: '#00e5ff' };
+  var POWERUP_SYMBOLS = { shieldsplitter: '💥', lifecore: '💚', forcefield: '🛡️' };
 
   function drawItems(items) {
     if (!items) return;
@@ -939,7 +939,7 @@
 
       ctx.save();
       ctx.globalAlpha = pulse;
-      if ('type' in item && (item.type === 'shieldsplitter' || item.type === 'lifecore')) {
+      if ('type' in item && (item.type === 'shieldsplitter' || item.type === 'lifecore' || item.type === 'forcefield')) {
         // Powerup - use PowerUp sprite
         if (spritesLoaded && sprites['PowerUp'] && sprites['PowerUp'].complete) {
           var pCol = POWERUP_COLORS[item.type] || '#fff';
@@ -1054,6 +1054,24 @@
       if ((p.freezeUntil ?? 0) > now) {
         ctx.fillStyle = '#0984e3';
         ctx.fillRect(x - 3, y - 3, PLAYER_W + 6, PLAYER_H + 6);
+      }
+
+      // Force field bubble (cyan glowing circle)
+      if ((p.forceFieldUntil ?? 0) > now) {
+        var pulse = 0.4 + 0.3 * Math.sin(now * 0.008);
+        ctx.save();
+        ctx.globalAlpha = pulse;
+        ctx.strokeStyle = '#00e5ff';
+        ctx.lineWidth = 3;
+        ctx.shadowColor = '#00e5ff';
+        ctx.shadowBlur = 20;
+        ctx.beginPath();
+        ctx.arc(x + PLAYER_W / 2, y + PLAYER_H / 2, PLAYER_W * 0.8, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = pulse * 0.2;
+        ctx.fillStyle = '#00e5ff';
+        ctx.fill();
+        ctx.restore();
       }
 
       // ShieldSplitter glow (red)
