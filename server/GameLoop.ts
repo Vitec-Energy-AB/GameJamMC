@@ -17,6 +17,10 @@ import { initPlatformGenerator, updatePlatformGeneration, resetPlatformGenerator
 const TICK_RATE = 60;
 const TICK_INTERVAL = 1000 / TICK_RATE;
 
+const AUTO_DEATH_DAMAGE_THRESHOLD = 800;
+const OVERDAMAGE_VERTICAL_VELOCITY = -2000;
+const OVERDAMAGE_HORIZONTAL_VELOCITY = 1500;
+
 export class GameLoop {
   private intervals: Map<string, ReturnType<typeof setInterval>> = new Map();
   private jumpPressed: Map<string, boolean> = new Map();
@@ -114,6 +118,14 @@ export class GameLoop {
         // Blast zone check
         const lavaActive = !!(match.lavaState && match.lavaState.active);
         if (checkBlastZones(player, match.map.blastZones, lavaActive)) {
+          eliminatePlayer(player, match, io);
+        }
+
+        // Auto-death at 800% damage
+        if (player.status === 'alive' && player.currentDamage >= AUTO_DEATH_DAMAGE_THRESHOLD) {
+          player.velocity.y = OVERDAMAGE_VERTICAL_VELOCITY;
+          player.velocity.x = (Math.random() < 0.5 ? 1 : -1) * OVERDAMAGE_HORIZONTAL_VELOCITY;
+          io.to(match.roomId).emit('player:overdamage', { playerId: player.id });
           eliminatePlayer(player, match, io);
         }
       }

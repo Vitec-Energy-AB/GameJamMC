@@ -1,5 +1,6 @@
 import { Match, CrumblingPlatformState, Player } from '../../shared/types';
 import { Server } from 'socket.io';
+import { PLAYER_WIDTH as PLAYER_W, PLAYER_HEIGHT as PLAYER_H } from '../../shared/constants';
 
 const CRUMBLE_FALL_MS   = 5000; // falls away after 5 s of crumbling
 const RESPAWN_MS        = 8000; // respawns 8 s after falling
@@ -56,8 +57,6 @@ export function updateCrumblingPlatforms(match: Match, io: Server): void {
 
 function isPlayerOnCrumbling(player: Player, cp: CrumblingPlatformState): boolean {
   if (player.status !== 'alive') return false;
-  const PLAYER_W = 40;
-  const PLAYER_H = 60;
   const plat = cp.def.platform;
 
   const playerBottom = player.position.y + PLAYER_H;

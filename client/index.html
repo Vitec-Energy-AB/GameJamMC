@@ -169,7 +169,7 @@
 <script>
 (function() {
   // ── Config ──────────────────────────────────────────────────────────────────
-  var PLAYER_W = 40, PLAYER_H = 60;
+  var PLAYER_W = 80, PLAYER_H = 120;
   var CANVAS_W = 1200, CANVAS_H = 700;
   var INTERPOLATION_DELAY = 100; // ms
 
@@ -1126,9 +1126,21 @@
       }
 
       if (p.id === localId) {
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(x, y, PLAYER_W, PLAYER_H);
+        // Green downward-pointing arrow bobbing above player's head
+        var bob = Math.sin(now * 0.004) * 4;
+        var arrowX = x + PLAYER_W / 2;
+        var arrowY = y - 38 + bob;
+        ctx.save();
+        ctx.fillStyle = '#00ff00';
+        ctx.shadowColor = '#00ff00';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.moveTo(arrowX, arrowY + 12);
+        ctx.lineTo(arrowX - 10, arrowY);
+        ctx.lineTo(arrowX + 10, arrowY);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
       }
 
       // Freeze visual
