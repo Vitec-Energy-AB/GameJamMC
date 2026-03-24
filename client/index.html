@@ -988,6 +988,14 @@
       if (p.status === 'eliminated') continue;
       if (p.status === 'respawning') {
         ctx.globalAlpha = 0.3;
+        // Show respawn effect if available
+        if (spritesLoaded && sprites['Respawn'] && sprites['Respawn'].complete) {
+          var respawnSize = 80;
+          ctx.save();
+          ctx.globalAlpha = 0.7;
+          ctx.drawImage(sprites['Respawn'], p.position.x - 20, p.position.y - 10, respawnSize, respawnSize);
+          ctx.restore();
+        }
       } else if (p.invulnerableUntil > now) {
         ctx.globalAlpha = 0.5 + 0.5 * Math.sin(now * 0.02);
       } else {
@@ -1012,12 +1020,44 @@
         ctx.shadowBlur = 20;
       }
 
-      ctx.fillStyle = col;
-      ctx.fillRect(x, y, PLAYER_W, PLAYER_H);
+      // Determine which sprite to use based on player state
+      var playerSprite = null;
+      if (spritesLoaded) {
+        if (p.isBlocking && sprites['PlayerShield'] && sprites['PlayerShield'].complete) {
+          playerSprite = sprites['PlayerShield'];
+        } else if (p.isAttacking && sprites['PlayerAttack'] && sprites['PlayerAttack'].complete) {
+          playerSprite = sprites['PlayerAttack'];
+        } else if (p.velocity && p.velocity.y < -2 && sprites['PlayerJump'] && sprites['PlayerJump'].complete) {
+          playerSprite = sprites['PlayerJump'];
+        } else if (p.velocity && p.velocity.y > 2 && sprites['PlayerFall'] && sprites['PlayerFall'].complete) {
+          playerSprite = sprites['PlayerFall'];
+        } else if (p.velocity && Math.abs(p.velocity.x) > 0.5 && sprites['PlayerRun'] && sprites['PlayerRun'].complete) {
+          playerSprite = sprites['PlayerRun'];
+        } else if (sprites['PlayerIdle'] && sprites['PlayerIdle'].complete) {
+          playerSprite = sprites['PlayerIdle'];
+        }
+      }
 
-      ctx.fillStyle = '#222';
-      var eyeX = p.facing === 'right' ? x + 25 : x + 8;
-      ctx.fillRect(eyeX, y + 14, 7, 7);
+      // Draw player sprite or fallback to colored rectangle
+      if (playerSprite) {
+        ctx.save();
+        // Flip sprite if facing left
+        if (p.facing === 'left') {
+          ctx.scale(-1, 1);
+          ctx.drawImage(playerSprite, -x - PLAYER_W, y, PLAYER_W, PLAYER_H);
+        } else {
+          ctx.drawImage(playerSprite, x, y, PLAYER_W, PLAYER_H);
+        }
+        ctx.restore();
+      } else {
+        // Fallback to colored rectangle
+        ctx.fillStyle = col;
+        ctx.fillRect(x, y, PLAYER_W, PLAYER_H);
+
+        ctx.fillStyle = '#222';
+        var eyeX = p.facing === 'right' ? x + 25 : x + 8;
+        ctx.fillRect(eyeX, y + 14, 7, 7);
+      }
 
       if (p.isBlocking) {
         ctx.strokeStyle = '#00ffff';
@@ -1053,12 +1093,19 @@
       ctx.font = 'bold 14px Segoe UI';
       ctx.fillText(Math.round(p.currentDamage) + '%', x + PLAYER_W / 2, y - 4);
 
-      // Weapon icon on player
+      // Weapon icon on player - try to use weapon sprite
       if (p.currentWeapon) {
-        var wCol = WEAPON_COLORS[p.currentWeapon.type] || '#fff';
+        var spriteName = WEAPON_SPRITES[p.currentWeapon.type];
         var iconX = p.facing === 'right' ? x + PLAYER_W + 2 : x - 14;
-        ctx.fillStyle = wCol;
-        ctx.fillRect(iconX, y + 10, 12, 12);
+
+        if (spritesLoaded && spriteName && sprites[spriteName] && sprites[spriteName].complete) {
+          ctx.drawImage(sprites[spriteName], iconX - 4, y + 6, 20, 20);
+        } else {
+          var wCol = WEAPON_COLORS[p.currentWeapon.type] || '#fff';
+          ctx.fillStyle = wCol;
+          ctx.fillRect(iconX, y + 10, 12, 12);
+        }
+
         ctx.fillStyle = '#111';
         ctx.font = '8px sans-serif';
         ctx.textAlign = 'center';
