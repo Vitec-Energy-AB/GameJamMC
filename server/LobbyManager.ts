@@ -1,12 +1,18 @@
 import { Match } from '../shared/types';
 import { Server } from 'socket.io';
 import { MatchManager } from './MatchManager';
+import { GameLoop } from './GameLoop';
+import { MapSelector } from './MapSelector';
 
 export class LobbyManager {
   private matchManager: MatchManager;
+  private gameLoop: GameLoop;
+  private mapSelector: MapSelector;
 
-  constructor(matchManager: MatchManager) {
+  constructor(matchManager: MatchManager, gameLoop: GameLoop) {
     this.matchManager = matchManager;
+    this.gameLoop = gameLoop;
+    this.mapSelector = new MapSelector();
   }
 
   handlePlayerReady(roomId: string, socketId: string, match: Match, io: Server): void {
@@ -24,16 +30,20 @@ export class LobbyManager {
 
   startCountdown(roomId: string, match: Match, io: Server): void {
     match.state = 'countdown';
+    // Resolve map selection based on votes
+    this.mapSelector.selectMap(match, io);
+
     let count = 3;
-    io.to(roomId).emit('match:countdown', { count });
+    io.to(roomId).emit('match:countdown', { count, selectedMap: match.selectedMap });
 
     const interval = setInterval(() => {
       count--;
       if (count > 0) {
-        io.to(roomId).emit('match:countdown', { count });
+        io.to(roomId).emit('match:countdown', { count, selectedMap: match.selectedMap });
       } else {
         clearInterval(interval);
         this.matchManager.initMatch(match);
+        this.gameLoop.startGame(roomId, match, io);
         io.to(roomId).emit('match:start', match);
       }
     }, 1000);

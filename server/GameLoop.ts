@@ -8,6 +8,9 @@ import { updateBlock } from './combat/BlockSystem';
 import { checkBlastZones, eliminatePlayer, respawnPlayer } from './combat/EliminationSystem';
 import { MatchManager } from './MatchManager';
 import { explodeBomb } from './combat/BombSystem';
+import { updateMovingPlatforms } from './physics/MovingPlatform';
+import { updateCrumblingPlatforms, getCrumblingPlatformForCollision } from './physics/CrumblingPlatform';
+import { ItemSpawnManager } from './items/ItemSpawnManager';
 
 const TICK_RATE = 60;
 const TICK_INTERVAL = 1000 / TICK_RATE;
@@ -16,9 +19,11 @@ export class GameLoop {
   private intervals: Map<string, ReturnType<typeof setInterval>> = new Map();
   private jumpPressed: Map<string, boolean> = new Map();
   private matchManager: MatchManager;
+  private itemSpawnManager: ItemSpawnManager;
 
   constructor(matchManager: MatchManager) {
     this.matchManager = matchManager;
+    this.itemSpawnManager = new ItemSpawnManager();
   }
 
   startGame(roomId: string, match: Match, io: Server): void {
@@ -36,6 +41,21 @@ export class GameLoop {
       if (match.state !== 'active') return;
 
       match.tick++;
+
+      // Update moving platforms
+      updateMovingPlatforms(match, dt);
+
+      // Update crumbling platforms
+      updateCrumblingPlatforms(match, io);
+
+      // Build combined platform list for collision (static + active moving + active crumbling)
+      const allPlatforms = [
+        ...match.map.platforms,
+        ...match.movingPlatforms.map(mp => mp.def.platform),
+        ...match.crumblingPlatforms
+          .map(cp => getCrumblingPlatformForCollision(cp))
+          .filter((p): p is NonNullable<typeof p> => p !== null),
+      ];
 
       // Process each player
       for (const player of match.players) {
@@ -74,7 +94,7 @@ export class GameLoop {
         // Physics
         applyMovement(player, dt);
         applyGravity(player, dt);
-        checkPlatformCollisions(player, match.map.platforms, dt);
+        checkPlatformCollisions(player, allPlatforms, dt);
 
         // Blast zone check
         if (checkBlastZones(player, match.map.blastZones)) {
@@ -86,7 +106,7 @@ export class GameLoop {
       for (let i = match.bombs.length - 1; i >= 0; i--) {
         const bomb = match.bombs[i];
         updateBomb(bomb, dt);
-        checkBombCollisions(bomb, match.map.platforms, dt);
+        checkBombCollisions(bomb, allPlatforms, dt);
 
         if (bomb.fuseTimer <= 0) {
           // Explode
@@ -98,6 +118,13 @@ export class GameLoop {
           match.bombs.splice(i, 1);
         }
       }
+
+      // Update projectiles (thrown weapons)
+      this.itemSpawnManager.updateProjectiles(match, io, dt);
+
+      // Item spawn / despawn
+      this.itemSpawnManager.trySpawnItems(match, io);
+      this.itemSpawnManager.updateItems(match, io);
 
       // Check win condition
       const winnerId = this.matchManager.checkWinCondition(match);
@@ -112,6 +139,17 @@ export class GameLoop {
         tick: match.tick,
         players: match.players,
         bombs: match.bombs,
+        items: match.items,
+        projectiles: match.projectiles,
+        movingPlatforms: match.movingPlatforms.map(mp => ({
+          id: mp.id,
+          platform: mp.def.platform,
+        })),
+        crumblingPlatforms: match.crumblingPlatforms.map(cp => ({
+          id: cp.id,
+          platform: cp.def.platform,
+          state: cp.state,
+        })),
       });
     }, TICK_INTERVAL);
 
@@ -125,4 +163,9 @@ export class GameLoop {
       this.intervals.delete(roomId);
     }
   }
+
+  getItemSpawnManager(): ItemSpawnManager {
+    return this.itemSpawnManager;
+  }
 }
+

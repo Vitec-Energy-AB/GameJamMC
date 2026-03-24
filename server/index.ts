@@ -8,13 +8,18 @@ import { RoomManager } from './RoomManager';
 import { LobbyManager } from './LobbyManager';
 import { GameLoop } from './GameLoop';
 import { MatchManager } from './MatchManager';
+import { MapSelector, AVAILABLE_MAPS } from './MapSelector';
 import { performAttack } from './combat/MeleeAttack';
 import { createBomb } from './combat/BombSystem';
+import { CHARACTERS, getCharacter } from '../shared/characters';
 
 const app = express();
 const httpServer = createServer(app);
+
+const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
+
 const io = new Server(httpServer, {
-  cors: { origin: '*' },
+  cors: { origin: CORS_ORIGIN },
 });
 
 const PORT = process.env.PORT ?? 3000;
@@ -29,6 +34,10 @@ const pageRateLimit = rateLimit({
 
 app.use(express.static(path.join(__dirname, '../../client')));
 
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok', uptime: process.uptime() });
+});
+
 app.get('/:roomId', pageRateLimit, (_req, res) => {
   res.sendFile(path.join(__dirname, '../../client/index.html'));
 });
@@ -40,8 +49,9 @@ app.get('/', pageRateLimit, (_req, res) => {
 const sessionManager = new SessionManager();
 const roomManager = new RoomManager();
 const matchManager = new MatchManager();
-const lobbyManager = new LobbyManager(matchManager);
 const gameLoop = new GameLoop(matchManager);
+const lobbyManager = new LobbyManager(matchManager, gameLoop);
+const mapSelector = new MapSelector();
 
 // Track player → room mapping
 const playerRoom = new Map<string, string>();
@@ -50,15 +60,19 @@ io.on('connection', (socket) => {
   const sessionId = sessionManager.createSession(socket.id);
   console.log(`[connect] ${socket.id} session=${sessionId}`);
 
-  socket.on('room:join', (data: { roomId: string; name: string; mode?: 'stock' | 'knockout' }) => {
+  socket.on('room:join', (data: { roomId: string; name: string; mode?: 'stock' | 'knockout'; character?: string }) => {
     const roomId = data.roomId || 'lobby';
     const match = roomManager.getOrCreateRoom(roomId);
 
     if (data.mode) match.mode = data.mode;
 
+    const characterId = data.character && getCharacter(data.character) ? data.character : 'bjork';
+    const characterStats = getCharacter(characterId)!;
+
     const player = {
       id: socket.id,
       name: data.name || `Player${Math.floor(Math.random() * 1000)}`,
+      character: characterId,
       position: { x: 400, y: 580 },
       velocity: { x: 0, y: 0 },
       facing: 'right' as const,
@@ -67,13 +81,20 @@ io.on('connection', (socket) => {
       isBlocking: false,
       blockCooldown: 0,
       isGrounded: false,
-      jumpsRemaining: 2,
+      jumpsRemaining: characterStats.maxJumps,
       status: 'lobby' as const,
       invulnerableUntil: 0,
       inputState: {
         left: false, right: false, jump: false,
         attack: false, block: false, throwBomb: false,
+        pickup: false, useWeapon: false,
       },
+      currentWeapon: null,
+      weaponCooldownUntil: 0,
+      freezeUntil: 0,
+      shieldSplitterUntil: 0,
+      damageMitigation: 0,
+      color: characterStats.color,
     };
 
     socket.join(roomId);
@@ -85,7 +106,7 @@ io.on('connection', (socket) => {
       lobbyManager.handleQueuedPlayer(roomId, socket.id, io);
       socket.emit('room:joined', { match, queued: true });
     } else {
-      socket.emit('room:joined', { match, queued: false });
+      socket.emit('room:joined', { match, queued: false, availableMaps: AVAILABLE_MAPS.map(m => ({ id: m.id, name: m.map.name, description: m.description })), availableCharacters: CHARACTERS });
       io.to(roomId).emit('room:update', match);
     }
   });
@@ -96,6 +117,14 @@ io.on('connection', (socket) => {
     const match = roomManager.getRoom(roomId);
     if (!match) return;
     lobbyManager.handlePlayerReady(roomId, socket.id, match, io);
+  });
+
+  socket.on('map:vote', (data: { mapId: string }) => {
+    const roomId = playerRoom.get(socket.id);
+    if (!roomId) return;
+    const match = roomManager.getRoom(roomId);
+    if (!match || match.state !== 'lobby') return;
+    mapSelector.handleVote(match, socket.id, data.mapId, io);
   });
 
   socket.on('input:update', (inputState) => {
@@ -116,7 +145,17 @@ io.on('connection', (socket) => {
     const player = match.players.find(p => p.id === socket.id);
     if (!player || player.status !== 'alive') return;
 
-    const results = performAttack(player, match.players);
+    // If player has a melee weapon, use its stats
+    let weaponOverride: { damage: number; knockbackModifier: number } | undefined;
+    if (player.currentWeapon && player.currentWeapon.category === 'melee') {
+      gameLoop.getItemSpawnManager().handleMeleeWeaponAttack(match, socket.id, io);
+      weaponOverride = {
+        damage: player.currentWeapon.damage,
+        knockbackModifier: player.currentWeapon.knockbackModifier,
+      };
+    }
+
+    const results = performAttack(player, match.players, weaponOverride);
     if (results.length > 0) {
       io.to(roomId).emit('player:hit', { results, type: 'melee', attackerId: socket.id });
     }
@@ -156,6 +195,22 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('bomb:thrown', { bomb });
   });
 
+  socket.on('item:pickup', () => {
+    const roomId = playerRoom.get(socket.id);
+    if (!roomId) return;
+    const match = roomManager.getRoom(roomId);
+    if (!match || match.state !== 'active') return;
+    gameLoop.getItemSpawnManager().handlePickup(match, socket.id, io);
+  });
+
+  socket.on('item:use', () => {
+    const roomId = playerRoom.get(socket.id);
+    if (!roomId) return;
+    const match = roomManager.getRoom(roomId);
+    if (!match || match.state !== 'active') return;
+    gameLoop.getItemSpawnManager().handleUseWeapon(match, socket.id, io);
+  });
+
   socket.on('match:start', () => {
     const roomId = playerRoom.get(socket.id);
     if (!roomId) return;
@@ -183,3 +238,4 @@ httpServer.listen(PORT, () => {
 });
 
 export { io };
+

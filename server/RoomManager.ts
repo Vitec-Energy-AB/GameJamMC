@@ -17,12 +17,18 @@ export class RoomManager {
         state: 'lobby',
         players: [],
         queue: [],
-        map: testArena,
+        map: { ...testArena },
         mode: 'stock',
         tick: 0,
         winner: null,
         maxPlayers: 10,
         bombs: [],
+        items: [],
+        projectiles: [],
+        movingPlatforms: [],
+        crumblingPlatforms: [],
+        mapVotes: {},
+        selectedMap: 'testArena',
       };
       this.rooms.set(roomId, match);
     }
@@ -64,3 +70,4 @@ export class RoomManager {
     return this.rooms;
   }
 }
+

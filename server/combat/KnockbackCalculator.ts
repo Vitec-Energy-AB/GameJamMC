@@ -1,4 +1,5 @@
 import { Player } from '../../shared/types';
+import { getCharacter } from '../../shared/characters';
 
 const BASE_KNOCKBACK_MELEE = 200;
 const BASE_KNOCKBACK_BOMB = 350;
@@ -11,7 +12,16 @@ export function calculateKnockback(
   attackType: 'melee' | 'bomb' = 'melee'
 ): { x: number; y: number } {
   const baseKnockback = attackType === 'bomb' ? BASE_KNOCKBACK_BOMB : BASE_KNOCKBACK_MELEE;
-  const magnitude = baseKnockback * (1 + target.currentDamage / 100) * attackModifier;
+
+  // ShieldSplitter doubles knockback for the attacker
+  const now = Date.now();
+  const shieldBonus = (attacker.shieldSplitterUntil ?? 0) > now ? 2 : 1;
+
+  // Heavier characters receive less knockback; lighter characters receive more
+  const targetChar = getCharacter(target.character);
+  const weightFactor = targetChar ? (1 / targetChar.weight) : 1.0;
+
+  const magnitude = baseKnockback * (1 + target.currentDamage / 100) * attackModifier * shieldBonus * weightFactor;
 
   // Direction: away from attacker
   let dx = target.position.x - attacker.position.x;
@@ -55,3 +65,4 @@ export function calculateBombKnockback(
     y: dy * magnitude,
   };
 }
+
