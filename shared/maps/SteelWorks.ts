@@ -27,7 +27,7 @@ export const steelWorks: GameMap = {
     { x: 860, y: 420 },
   ],
   blastZones: {
-    top: -150,
+    top: -400,
     bottom: 800,
     left: -100,
     right: 1300,

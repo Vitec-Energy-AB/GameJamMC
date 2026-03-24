@@ -107,7 +107,8 @@ export class GameLoop {
         checkPlatformCollisions(player, allPlatforms, dt);
 
         // Blast zone check
-        if (checkBlastZones(player, match.map.blastZones)) {
+        const lavaActive = !!(match.lavaState && match.lavaState.active);
+        if (checkBlastZones(player, match.map.blastZones, lavaActive)) {
           eliminatePlayer(player, match, io);
         }
       }

@@ -7,12 +7,12 @@ const INVULNERABLE_DURATION = 1000; // ms
 const STOCK_LIVES = 3;
 const KNOCKOUT_LIVES = 1;
 
-export function checkBlastZones(player: Player, blastZones: Match['map']['blastZones']): boolean {
+export function checkBlastZones(player: Player, blastZones: Match['map']['blastZones'], lavaActive?: boolean): boolean {
   return (
-    player.position.y < blastZones.top ||
-    player.position.y + PLAYER_HEIGHT > blastZones.bottom ||
-    player.position.x < blastZones.left ||
-    player.position.x + PLAYER_WIDTH > blastZones.right
+    (!lavaActive && player.position.y < blastZones.top) ||
+    (player.position.y + PLAYER_HEIGHT > blastZones.bottom) ||
+    (player.position.x + PLAYER_WIDTH > blastZones.right) ||
+    (player.position.x < blastZones.left)
   );
 }
 
