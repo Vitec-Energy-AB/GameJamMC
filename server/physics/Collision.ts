@@ -1,8 +1,6 @@
 import { Player, Platform } from '../../shared/types';
+import { PLAYER_WIDTH, PLAYER_HEIGHT } from '../../shared/constants';
 import { setGrounded } from './Gravity';
-
-const PLAYER_WIDTH = 40;
-const PLAYER_HEIGHT = 60;
 
 export function checkPlatformCollisions(player: Player, platforms: Platform[], dt: number = 1 / 60): void {
   let grounded = false;

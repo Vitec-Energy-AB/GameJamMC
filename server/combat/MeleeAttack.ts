@@ -1,14 +1,13 @@
 import { Player, HitResult } from '../../shared/types';
 import { applyDamage } from './DamageSystem';
 import { calculateKnockback } from './KnockbackCalculator';
+import { PLAYER_WIDTH, PLAYER_HEIGHT } from '../../shared/constants';
 
 const ATTACK_COOLDOWN = 500; // ms
 const BASE_DAMAGE = 15;
 const ATTACK_MODIFIER = 1.0;
 const HITBOX_WIDTH = 60;
 const HITBOX_HEIGHT = 80;
-const PLAYER_WIDTH = 40;
-const PLAYER_HEIGHT = 60;
 
 export function performAttack(attacker: Player, targets: Player[]): HitResult[] {
   const now = Date.now();
