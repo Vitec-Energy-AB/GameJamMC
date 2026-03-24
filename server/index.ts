@@ -34,6 +34,7 @@ const pageRateLimit = rateLimit({
 
 app.use(express.static(path.join(__dirname, '../../client')));
 app.use('/Resources', express.static(path.join(__dirname, '../../Resources')));
+app.use('/Sprites', express.static(path.join(__dirname, '../../Sprites')));
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', uptime: process.uptime() });
