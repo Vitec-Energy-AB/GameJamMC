@@ -99,6 +99,8 @@ export interface Player {
   freezeUntil: number;
   shieldSplitterUntil: number;
   damageMitigation: number;
+  isAttacking?: boolean;
+  attackAnimUntil?: number;
 }
 
 export interface Bomb {

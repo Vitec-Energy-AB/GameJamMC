@@ -97,6 +97,10 @@ export class GameLoop {
         }
         updateBlock(player, dt);
 
+        // Clear attack animation flag after duration expires
+        if (player.isAttacking && player.attackAnimUntil !== undefined && now >= player.attackAnimUntil) {
+          player.isAttacking = false;
+        }
         // Physics
         applyMovement(player, dt);
         applyGravity(player, dt);

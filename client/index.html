@@ -1086,6 +1086,23 @@
         ctx.setLineDash([]);
       }
 
+      // Attack visual effect
+      if (p.isAttacking) {
+        ctx.save();
+        ctx.globalAlpha = 0.55;
+        ctx.strokeStyle = '#ffdd00';
+        ctx.lineWidth = 5;
+        var arcCX = p.facing === 'right' ? x + PLAYER_W : x;
+        var arcCY = y + PLAYER_H * 0.4;
+        var arcRadius = 50;
+        var arcStart = p.facing === 'right' ? -Math.PI * 0.6 : Math.PI * 0.4;
+        var arcEnd = p.facing === 'right' ? Math.PI * 0.6 : Math.PI * 1.6;
+        ctx.beginPath();
+        ctx.arc(arcCX, arcCY, arcRadius, arcStart, arcEnd);
+        ctx.stroke();
+        ctx.restore();
+      }
+
       ctx.shadowBlur = 0;
       ctx.globalAlpha = 1.0;
 
@@ -1300,6 +1317,7 @@
       if (lp) {
         var targetCameraY = lp.position.y - CANVAS_H * 0.6;
         if (targetCameraY > 0) targetCameraY = 0;
+        if (targetCameraY < -2000) targetCameraY = -2000;
         cameraY = cameraY + (targetCameraY - cameraY) * 0.08;
       }
     }

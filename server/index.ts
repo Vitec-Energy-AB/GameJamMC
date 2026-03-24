@@ -160,6 +160,8 @@ io.on('connection', (socket) => {
     }
 
     const results = performAttack(player, match.players, weaponOverride);
+    player.isAttacking = true;
+    player.attackAnimUntil = Date.now() + 300;
     if (results.length > 0) {
       io.to(roomId).emit('player:hit', { results, type: 'melee', attackerId: socket.id });
     }
@@ -228,6 +230,8 @@ io.on('connection', (socket) => {
       // Decrement durability and apply weapon cooldown
       gameLoop.getItemSpawnManager().handleMeleeWeaponAttack(match, socket.id, io);
       const results = performAttack(player, match.players, weaponOverride);
+      player.isAttacking = true;
+      player.attackAnimUntil = Date.now() + 300;
       if (results.length > 0) {
         io.to(roomId).emit('player:hit', { results, type: 'melee', attackerId: socket.id });
       }
