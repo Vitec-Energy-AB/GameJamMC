@@ -54,6 +54,20 @@
     #winnerName { font-size: 2rem; color: #f39c12; margin-bottom: 30px; }
     #playAgainBtn { background: #e94560; color: #fff; padding: 12px 40px; font-size: 1.2rem; }
     #controls { color: #888; font-size: 0.75rem; margin-top: 14px; text-align: center; line-height: 1.6; }
+    #mapSection { margin-top: 16px; }
+    #mapSection h3 { color: #aaa; font-size: 0.9rem; margin-bottom: 8px; }
+    .map-cards { display: flex; gap: 8px; flex-wrap: wrap; }
+    .map-card {
+      flex: 1; min-width: 110px; padding: 8px 10px; border-radius: 8px;
+      background: #0f3460; border: 2px solid transparent; cursor: pointer;
+      transition: border-color 0.2s; text-align: center;
+    }
+    .map-card:hover { border-color: #e94560; }
+    .map-card.selected { border-color: #27ae60; }
+    .map-card .map-name { font-weight: bold; font-size: 0.9rem; color: #eee; }
+    .map-card .map-desc { font-size: 0.7rem; color: #aaa; margin-top: 4px; }
+    .map-card .map-votes { font-size: 0.8rem; color: #f39c12; margin-top: 4px; }
+    #selectedMapLabel { color: #27ae60; font-size: 0.9rem; text-align: center; margin-top: 6px; display: none; }
   </style>
 </head>
 <body>
@@ -82,6 +96,12 @@
 
     <button id="readyBtn">&#x2713; Ready Up!</button>
 
+    <div id="mapSection" style="display:none;">
+      <h3>&#x1F5FA; Vote for Map</h3>
+      <div class="map-cards" id="mapCards"></div>
+      <div id="selectedMapLabel"></div>
+    </div>
+
     <div id="queueMsg">&#x23F3; You are queued &mdash; waiting for next match...</div>
     <div id="statusMsg"></div>
     <div id="countdown"></div>
@@ -89,7 +109,7 @@
     <div id="playerList"></div>
 
     <div id="controls">
-      Move: &larr; &rarr; (or A D) &nbsp;|&nbsp; Jump: &uarr; / W / Space &nbsp;|&nbsp; Attack: Z &nbsp;|&nbsp; Block: C &nbsp;|&nbsp; Throw Bomb: B
+      Move: &larr; &rarr; (or A D) &nbsp;|&nbsp; Jump: &uarr; / W / Space &nbsp;|&nbsp; Attack: Z &nbsp;|&nbsp; Block: C &nbsp;|&nbsp; Throw Bomb: B &nbsp;|&nbsp; Pickup Item: E &nbsp;|&nbsp; Use Weapon: Q / X
     </div>
   </div>
 </div>
@@ -115,11 +135,15 @@
   var currentMatch = null;
   var inGame = false;
   var stateBuffer = [];
-  var localInput = { left: false, right: false, jump: false, attack: false, block: false, throwBomb: false };
+  var localInput = { left: false, right: false, jump: false, attack: false, block: false, throwBomb: false, pickup: false, useWeapon: false };
   var lastInputSent = {};
   var attackPressed = false;
   var bombPressed = false;
+  var pickupPressed = false;
+  var useWeaponPressed = false;
   var explosions = [];
+  var availableMaps = [];
+  var myMapVote = null;
 
   // ── DOM Refs ────────────────────────────────────────────────────────────────
   var canvas = document.getElementById('gameCanvas');
@@ -135,6 +159,9 @@
   var roomLabel = document.getElementById('roomLabel');
   var nicknameInput = document.getElementById('nicknameInput');
   var modeSelect = document.getElementById('modeSelect');
+  var mapSection = document.getElementById('mapSection');
+  var mapCardsDiv = document.getElementById('mapCards');
+  var selectedMapLabel = document.getElementById('selectedMapLabel');
 
   roomLabel.textContent = 'Room: ' + roomId;
 
@@ -147,6 +174,8 @@
       case 'KeyZ': localInput.attack = true; break;
       case 'KeyC': localInput.block = true; break;
       case 'KeyB': localInput.throwBomb = true; break;
+      case 'KeyE': localInput.pickup = true; break;
+      case 'KeyQ': case 'KeyX': localInput.useWeapon = true; break;
     }
   });
   window.addEventListener('keyup', function(e) {
@@ -157,6 +186,8 @@
       case 'KeyZ': localInput.attack = false; break;
       case 'KeyC': localInput.block = false; break;
       case 'KeyB': localInput.throwBomb = false; break;
+      case 'KeyE': localInput.pickup = false; break;
+      case 'KeyQ': case 'KeyX': localInput.useWeapon = false; break;
     }
   });
 
@@ -171,6 +202,10 @@
 
     socket.on('room:joined', function(data) {
       currentMatch = data.match;
+      if (data.availableMaps) {
+        availableMaps = data.availableMaps;
+        renderMapCards();
+      }
       if (data.queued) {
         queueMsg.style.display = 'block';
         readyBtn.style.display = 'none';
@@ -178,6 +213,7 @@
       } else {
         queueMsg.style.display = 'none';
         readyBtn.style.display = 'block';
+        mapSection.style.display = 'block';
         joinSection.style.display = 'none';
       }
       updatePlayerList(data.match.players);
@@ -193,6 +229,13 @@
       countdownDiv.style.display = 'block';
       countdownDiv.textContent = data.count;
       readyBtn.style.display = 'none';
+      if (data.selectedMap) {
+        var mapEntry = availableMaps.find(function(m) { return m.id === data.selectedMap; });
+        if (mapEntry) {
+          selectedMapLabel.style.display = 'block';
+          selectedMapLabel.textContent = '&#x1F5FA; Bana: ' + mapEntry.name;
+        }
+      }
     });
 
     socket.on('match:start', function(match) {
@@ -206,6 +249,13 @@
     socket.on('state:update', function(state) {
       stateBuffer.push(Object.assign({}, state, { receivedAt: Date.now() }));
       if (stateBuffer.length > 20) stateBuffer.shift();
+      // Sync dynamic platform states to currentMatch for rendering
+      if (currentMatch) {
+        if (state.movingPlatforms) currentMatch._movingPlatforms = state.movingPlatforms;
+        if (state.crumblingPlatforms) currentMatch._crumblingPlatforms = state.crumblingPlatforms;
+        if (state.items) currentMatch.items = state.items;
+        if (state.projectiles) currentMatch.projectiles = state.projectiles;
+      }
     });
 
     socket.on('player:eliminated', function(data) {
@@ -239,9 +289,76 @@
       queueMsg.style.display = 'block';
       queueMsg.textContent = data.message;
     });
+
+    socket.on('map:vote', function(data) {
+      if (data.votes) updateMapVoteDisplay(data.votes);
+    });
+
+    socket.on('map:selected', function(data) {
+      var mapEntry = availableMaps.find(function(m) { return m.id === data.mapId; });
+      if (mapEntry) {
+        selectedMapLabel.style.display = 'block';
+        selectedMapLabel.textContent = '&#x1F5FA; Bana: ' + mapEntry.name;
+      }
+      updateMapVoteDisplay(data.votes || {});
+    });
+
+    socket.on('item:spawn', function(data) {
+      if (currentMatch) {
+        if (!currentMatch.items) currentMatch.items = [];
+        currentMatch.items.push(data.item);
+      }
+    });
+
+    socket.on('item:pickup', function(data) {
+      if (!currentMatch || !currentMatch.items) return;
+      var item = currentMatch.items.find(function(i) { return i.id === data.itemId; });
+      if (item && 'pickedUpBy' in item) item.pickedUpBy = data.playerId;
+      if (item && !('pickedUpBy' in item)) {
+        var idx = currentMatch.items.indexOf(item);
+        if (idx !== -1) currentMatch.items.splice(idx, 1);
+      }
+    });
+
+    socket.on('item:drop', function(data) {
+      if (!currentMatch || !currentMatch.items) return;
+      if (data.despawned) {
+        currentMatch.items = currentMatch.items.filter(function(i) { return i.id !== data.itemId; });
+      }
+    });
   }
 
   // ── Lobby UI ─────────────────────────────────────────────────────────────────
+  function renderMapCards() {
+    if (!mapCardsDiv) return;
+    mapCardsDiv.innerHTML = '';
+    availableMaps.forEach(function(m) {
+      var card = document.createElement('div');
+      card.className = 'map-card' + (myMapVote === m.id ? ' selected' : '');
+      card.dataset.mapId = m.id;
+      card.innerHTML =
+        '<div class="map-name">' + escHtml(m.name) + '</div>' +
+        '<div class="map-desc">' + escHtml(m.description) + '</div>' +
+        '<div class="map-votes" id="votes_' + m.id + '">0 röster</div>';
+      card.addEventListener('click', function() {
+        myMapVote = m.id;
+        document.querySelectorAll('.map-card').forEach(function(c) { c.classList.remove('selected'); });
+        card.classList.add('selected');
+        socket.emit('map:vote', { mapId: m.id });
+      });
+      mapCardsDiv.appendChild(card);
+    });
+  }
+
+  function updateMapVoteDisplay(votes) {
+    var tally = {};
+    Object.values(votes).forEach(function(v) { tally[v] = (tally[v] || 0) + 1; });
+    availableMaps.forEach(function(m) {
+      var el = document.getElementById('votes_' + m.id);
+      if (el) el.textContent = (tally[m.id] || 0) + ' röster';
+    });
+  }
+
   document.getElementById('joinBtn').addEventListener('click', function() {
     var name = nicknameInput.value.trim() || 'Player' + Math.floor(Math.random() * 1000);
     var mode = modeSelect.value;
@@ -337,6 +454,126 @@
     }
   }
 
+  function drawMovingPlatforms(movingPlatforms) {
+    if (!movingPlatforms) return;
+    for (var i = 0; i < movingPlatforms.length; i++) {
+      var mp = movingPlatforms[i];
+      var p = mp.platform;
+      ctx.fillStyle = '#2980b9';
+      ctx.fillRect(p.x, p.y, p.width, p.height);
+      ctx.fillStyle = '#5dade2';
+      ctx.fillRect(p.x, p.y, p.width, 5);
+      ctx.strokeStyle = '#1a5276';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(p.x, p.y, p.width, p.height);
+    }
+  }
+
+  function drawCrumblingPlatforms(crumblingPlatforms) {
+    if (!crumblingPlatforms) return;
+    var now = Date.now();
+    for (var i = 0; i < crumblingPlatforms.length; i++) {
+      var cp = crumblingPlatforms[i];
+      if (cp.state === 'gone') continue;
+      var p = cp.def ? cp.def.platform : cp.platform;
+      if (!p) continue;
+      var alpha = cp.state === 'crumbling' ? 0.5 : 1.0;
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = cp.state === 'crumbling' ? '#e74c3c' : '#8e44ad';
+      ctx.fillRect(p.x, p.y, p.width, p.height);
+      ctx.fillStyle = cp.state === 'crumbling' ? '#ff7675' : '#a569bd';
+      ctx.fillRect(p.x, p.y, p.width, 5);
+      ctx.globalAlpha = 1.0;
+    }
+  }
+
+  var WEAPON_COLORS = {
+    steelclub: '#95a5a6', energyblade: '#00cec9', fireaxe: '#e17055',
+    lightningspear: '#fdcb6e', icecrystal: '#74b9ff'
+  };
+  var WEAPON_SYMBOLS = {
+    steelclub: '🪃', energyblade: '⚡', fireaxe: '🪓',
+    lightningspear: '⚡', icecrystal: '❄️'
+  };
+  var POWERUP_COLORS = { shieldsplitter: '#e74c3c', lifecore: '#2ecc71' };
+  var POWERUP_SYMBOLS = { shieldsplitter: '💥', lifecore: '💚' };
+
+  function drawItems(items) {
+    if (!items) return;
+    var now = Date.now();
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      if (!item.active) continue;
+      if ('pickedUpBy' in item && item.pickedUpBy !== null) continue;
+
+      var x = item.position.x;
+      var y = item.position.y;
+      var pulse = 0.7 + 0.3 * Math.sin(now * 0.005 + i);
+
+      ctx.save();
+      ctx.globalAlpha = pulse;
+      if ('type' in item && (item.type === 'shieldsplitter' || item.type === 'lifecore')) {
+        // Powerup
+        var pCol = POWERUP_COLORS[item.type] || '#fff';
+        ctx.shadowColor = pCol;
+        ctx.shadowBlur = 14;
+        ctx.fillStyle = pCol;
+        ctx.beginPath();
+        ctx.arc(x, y, 12, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = '14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(POWERUP_SYMBOLS[item.type] || '?', x, y + 5);
+      } else {
+        // Weapon
+        var wCol = WEAPON_COLORS[item.type] || '#fff';
+        ctx.shadowColor = wCol;
+        ctx.shadowBlur = 10;
+        ctx.fillStyle = wCol;
+        ctx.fillRect(x - 10, y - 10, 20, 20);
+        ctx.fillStyle = '#222';
+        ctx.font = 'bold 10px Segoe UI';
+        ctx.textAlign = 'center';
+        // Rarity indicator
+        var rarityDot = item.rarity === 'rare' ? '#f1c40f' : item.rarity === 'uncommon' ? '#9b59b6' : '#aaa';
+        ctx.fillStyle = rarityDot;
+        ctx.beginPath();
+        ctx.arc(x + 8, y - 8, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+  }
+
+  function drawProjectiles(projectiles) {
+    if (!projectiles) return;
+    for (var i = 0; i < projectiles.length; i++) {
+      var proj = projectiles[i];
+      if (!proj.active) continue;
+      ctx.save();
+      if (proj.type === 'lightningspear') {
+        ctx.strokeStyle = '#fdcb6e';
+        ctx.lineWidth = 4;
+        ctx.shadowColor = '#fdcb6e';
+        ctx.shadowBlur = 8;
+        var dir = proj.velocity.x >= 0 ? 1 : -1;
+        ctx.beginPath();
+        ctx.moveTo(proj.position.x, proj.position.y);
+        ctx.lineTo(proj.position.x - dir * 24, proj.position.y + 2);
+        ctx.stroke();
+      } else if (proj.type === 'icecrystal') {
+        ctx.fillStyle = '#74b9ff';
+        ctx.shadowColor = '#0984e3';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(proj.position.x, proj.position.y, 8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+  }
+
   function drawPlayers(players, localId) {
     var now = Date.now();
     for (var i = 0; i < players.length; i++) {
@@ -355,6 +592,18 @@
 
       ctx.shadowColor = col;
       ctx.shadowBlur = p.id === localId ? 12 : 4;
+
+      // Freeze tint (blue overlay)
+      if ((p.freezeUntil ?? 0) > now) {
+        ctx.fillStyle = '#0984e3';
+        ctx.fillRect(x - 3, y - 3, PLAYER_W + 6, PLAYER_H + 6);
+      }
+
+      // ShieldSplitter glow (red)
+      if ((p.shieldSplitterUntil ?? 0) > now) {
+        ctx.shadowColor = '#e74c3c';
+        ctx.shadowBlur = 20;
+      }
 
       ctx.fillStyle = col;
       ctx.fillRect(x, y, PLAYER_W, PLAYER_H);
@@ -375,6 +624,15 @@
         ctx.strokeRect(x, y, PLAYER_W, PLAYER_H);
       }
 
+      // Freeze visual
+      if ((p.freezeUntil ?? 0) > now) {
+        ctx.strokeStyle = '#74b9ff';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.strokeRect(x - 2, y - 2, PLAYER_W + 4, PLAYER_H + 4);
+        ctx.setLineDash([]);
+      }
+
       ctx.shadowBlur = 0;
       ctx.globalAlpha = 1.0;
 
@@ -387,6 +645,18 @@
       ctx.fillStyle = dmgColor;
       ctx.font = 'bold 14px Segoe UI';
       ctx.fillText(Math.round(p.currentDamage) + '%', x + PLAYER_W / 2, y - 4);
+
+      // Weapon icon on player
+      if (p.currentWeapon) {
+        var wCol = WEAPON_COLORS[p.currentWeapon.type] || '#fff';
+        var iconX = p.facing === 'right' ? x + PLAYER_W + 2 : x - 14;
+        ctx.fillStyle = wCol;
+        ctx.fillRect(iconX, y + 10, 12, 12);
+        ctx.fillStyle = '#111';
+        ctx.font = '8px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(p.currentWeapon.category === 'melee' ? p.currentWeapon.durability : p.currentWeapon.ammo, iconX + 6, y + 20);
+      }
     }
     ctx.globalAlpha = 1.0;
   }
@@ -439,10 +709,11 @@
     if (!currentMatch) return;
     var players = state ? state.players : (currentMatch.players || []);
     var mode = currentMatch.mode || 'stock';
+    var now = Date.now();
 
     ctx.save();
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.fillRect(0, 0, CANVAS_W, 50);
+    ctx.fillRect(0, 0, CANVAS_W, 54);
     ctx.restore();
 
     var xi = 20;
@@ -464,7 +735,22 @@
         for (var h = 0; h < Math.max(0, p.currentLives); h++) hearts += '\u2665';
         ctx.fillText(hearts, xi + 36, 40);
       }
-      xi += 120;
+      // Weapon info in HUD
+      if (p.currentWeapon && p.id === localPlayerId) {
+        var wCol2 = WEAPON_COLORS[p.currentWeapon.type] || '#fff';
+        ctx.fillStyle = wCol2;
+        ctx.font = 'bold 11px Segoe UI';
+        var wLabel = p.currentWeapon.type.toUpperCase();
+        var wCount = p.currentWeapon.category === 'melee' ? ('DUR:' + p.currentWeapon.durability) : ('AMM:' + p.currentWeapon.ammo);
+        ctx.fillText(wLabel + ' ' + wCount, xi, 52);
+      }
+      // Powerup indicators
+      if ((p.shieldSplitterUntil ?? 0) > now) {
+        ctx.fillStyle = '#e74c3c';
+        ctx.font = '10px sans-serif';
+        ctx.fillText('💥', xi + 85, 20);
+      }
+      xi += 140;
     }
   }
 
@@ -508,18 +794,35 @@
     }
     bombPressed = localInput.throwBomb;
 
+    if (localInput.pickup && !pickupPressed) {
+      socket.emit('item:pickup');
+    }
+    pickupPressed = localInput.pickup;
+
+    if (localInput.useWeapon && !useWeaponPressed) {
+      socket.emit('item:use');
+    }
+    useWeaponPressed = localInput.useWeapon;
+
     socket.emit('player:block', localInput.block);
 
     var state = getInterpolatedState();
 
     drawBackground();
-    if (currentMatch) drawPlatforms(currentMatch.map.platforms);
+    if (currentMatch) {
+      drawPlatforms(currentMatch.map.platforms);
+      drawMovingPlatforms(currentMatch._movingPlatforms);
+      drawCrumblingPlatforms(currentMatch._crumblingPlatforms);
+      drawItems(currentMatch.items);
+    }
     drawBlastZoneIndicators();
 
     if (state) {
       drawBombs(state.bombs || []);
+      drawProjectiles(state.projectiles || currentMatch && currentMatch.projectiles || []);
       drawPlayers(state.players, localPlayerId);
     } else if (currentMatch) {
+      drawProjectiles(currentMatch.projectiles || []);
       drawPlayers(currentMatch.players, localPlayerId);
     }
 

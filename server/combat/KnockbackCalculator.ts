@@ -11,7 +11,12 @@ export function calculateKnockback(
   attackType: 'melee' | 'bomb' = 'melee'
 ): { x: number; y: number } {
   const baseKnockback = attackType === 'bomb' ? BASE_KNOCKBACK_BOMB : BASE_KNOCKBACK_MELEE;
-  const magnitude = baseKnockback * (1 + target.currentDamage / 100) * attackModifier;
+
+  // ShieldSplitter doubles knockback for the attacker
+  const now = Date.now();
+  const shieldBonus = (attacker.shieldSplitterUntil ?? 0) > now ? 2 : 1;
+
+  const magnitude = baseKnockback * (1 + target.currentDamage / 100) * attackModifier * shieldBonus;
 
   // Direction: away from attacker
   let dx = target.position.x - attacker.position.x;
@@ -55,3 +60,4 @@ export function calculateBombKnockback(
     y: dy * magnitude,
   };
 }
+

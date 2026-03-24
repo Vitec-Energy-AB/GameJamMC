@@ -1,6 +1,8 @@
 import { Match, Player } from '../shared/types';
 import { Server } from 'socket.io';
 import { respawnPlayer, initPlayerLives } from './combat/EliminationSystem';
+import { buildMovingPlatformStates } from './physics/MovingPlatform';
+import { buildCrumblingPlatformStates } from './physics/CrumblingPlatform';
 
 export class MatchManager {
   checkWinCondition(match: Match): string | null {
@@ -40,12 +42,22 @@ export class MatchManager {
     match.tick = 0;
     match.winner = null;
     match.bombs = [];
+    match.items = [];
+    match.projectiles = [];
+    match.movingPlatforms = [];
+    match.crumblingPlatforms = [];
+    match.mapVotes = {};
 
     // Reset players
     for (const player of match.players) {
       player.status = 'lobby';
       player.currentDamage = 0;
       player.velocity = { x: 0, y: 0 };
+      player.currentWeapon = null;
+      player.weaponCooldownUntil = 0;
+      player.freezeUntil = 0;
+      player.shieldSplitterUntil = 0;
+      player.damageMitigation = 0;
     }
 
     // Move queued players in
@@ -80,9 +92,21 @@ export class MatchManager {
       player.invulnerableUntil = Date.now() + 1000;
       player.isBlocking = false;
       player.blockCooldown = 0;
+      player.currentWeapon = null;
+      player.weaponCooldownUntil = 0;
+      player.freezeUntil = 0;
+      player.shieldSplitterUntil = 0;
+      player.damageMitigation = 0;
     });
     match.bombs = [];
+    match.items = [];
+    match.projectiles = [];
     match.state = 'active';
     match.tick = 0;
+
+    // Initialize dynamic platform states from map definition
+    buildMovingPlatformStates(match);
+    buildCrumblingPlatformStates(match);
   }
 }
+

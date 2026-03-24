@@ -5,6 +5,71 @@ export interface InputState {
   attack: boolean;
   block: boolean;
   throwBomb: boolean;
+  pickup: boolean;
+  useWeapon: boolean;
+}
+
+export interface WeaponItem {
+  id: string;
+  type: 'steelclub' | 'energyblade' | 'fireaxe' | 'lightningspear' | 'icecrystal';
+  category: 'melee' | 'thrown';
+  position: { x: number; y: number };
+  pickedUpBy: string | null;
+  durability: number;
+  ammo: number;
+  damage: number;
+  knockbackModifier: number;
+  attackCooldown: number;
+  rarity: 'common' | 'uncommon' | 'rare';
+  spawnTime: number;
+  active: boolean;
+}
+
+export interface PowerupItem {
+  id: string;
+  type: 'shieldsplitter' | 'lifecore';
+  position: { x: number; y: number };
+  active: boolean;
+  spawnTime: number;
+}
+
+export type SpawnedItem = WeaponItem | PowerupItem;
+
+export interface Projectile {
+  id: string;
+  type: 'lightningspear' | 'icecrystal';
+  position: { x: number; y: number };
+  velocity: { x: number; y: number };
+  thrownBy: string;
+  damage: number;
+  knockbackModifier: number;
+  active: boolean;
+}
+
+export interface MovingPlatformDef {
+  platform: Platform;
+  minX: number;
+  maxX: number;
+  speed: number;
+}
+
+export interface MovingPlatformState {
+  id: string;
+  def: MovingPlatformDef;
+  currentX: number;
+  direction: number;
+}
+
+export interface CrumblingPlatformDef {
+  platform: Platform;
+}
+
+export interface CrumblingPlatformState {
+  id: string;
+  def: CrumblingPlatformDef;
+  state: 'solid' | 'crumbling' | 'gone';
+  crumbleStart: number;
+  respawnAt: number;
 }
 
 export interface Player {
@@ -26,6 +91,11 @@ export interface Player {
   attackCooldown?: number;
   blockDuration?: number;
   respawnTimer?: number;
+  currentWeapon: WeaponItem | null;
+  weaponCooldownUntil: number;
+  freezeUntil: number;
+  shieldSplitterUntil: number;
+  damageMitigation: number;
 }
 
 export interface Bomb {
@@ -53,6 +123,8 @@ export interface GameMap {
   spawnPoints: { x: number; y: number }[];
   itemSpawnPoints: { x: number; y: number }[];
   blastZones: { top: number; bottom: number; left: number; right: number };
+  movingPlatforms?: MovingPlatformDef[];
+  crumblingPlatforms?: CrumblingPlatformDef[];
 }
 
 export interface Match {
@@ -66,6 +138,12 @@ export interface Match {
   winner: string | null;
   maxPlayers: number;
   bombs: Bomb[];
+  items: SpawnedItem[];
+  projectiles: Projectile[];
+  movingPlatforms: MovingPlatformState[];
+  crumblingPlatforms: CrumblingPlatformState[];
+  mapVotes: { [playerId: string]: string };
+  selectedMap: string;
 }
 
 export interface HitResult {
