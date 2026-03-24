@@ -463,7 +463,7 @@ Lägg till en spelare som kan hoppa och röra sig åt vänster och höger.
 
 > 🔒 **LÅST SEKTION – ÄNDRA INTE**
 
-1. Justera systemprompten (Agentinstruktioner), inklusive `BRANCH_NAME`.
+
 2. Spara `README.md`.
 3. Starta Copilot-agenten.
 4. Skicka prompts som commit-meddelanden, upp till 10 gånger.
