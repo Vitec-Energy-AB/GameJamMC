@@ -1086,20 +1086,44 @@
         ctx.setLineDash([]);
       }
 
-      // Attack visual effect
+      // Attack slash visual effect
       if (p.isAttacking) {
         ctx.save();
-        ctx.globalAlpha = 0.55;
-        ctx.strokeStyle = '#ffdd00';
-        ctx.lineWidth = 5;
-        var arcCX = p.facing === 'right' ? x + PLAYER_W : x;
-        var arcCY = y + PLAYER_H * 0.4;
-        var arcRadius = 50;
-        var arcStart = p.facing === 'right' ? -Math.PI * 0.6 : Math.PI * 0.4;
-        var arcEnd = p.facing === 'right' ? Math.PI * 0.6 : Math.PI * 1.6;
+        ctx.globalAlpha = 0.6;
+        var slashX, slashStartAngle, slashEndAngle;
+        if (p.facing === 'right') {
+          slashX = x + PLAYER_W;
+          slashStartAngle = -Math.PI * 0.6;
+          slashEndAngle = Math.PI * 0.6;
+        } else {
+          slashX = x;
+          slashStartAngle = Math.PI * 0.4;
+          slashEndAngle = Math.PI * 1.6;
+        }
+        var slashY = y + PLAYER_H / 2;
+        var slashRadius = 60;
+
+        // Outer glow
+        ctx.strokeStyle = 'rgba(255, 200, 50, 0.4)';
+        ctx.lineWidth = 16;
         ctx.beginPath();
-        ctx.arc(arcCX, arcCY, arcRadius, arcStart, arcEnd);
+        ctx.arc(slashX, slashY, slashRadius, slashStartAngle, slashEndAngle);
         ctx.stroke();
+
+        // Inner bright arc
+        ctx.strokeStyle = 'rgba(255, 255, 100, 0.8)';
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.arc(slashX, slashY, slashRadius, slashStartAngle, slashEndAngle);
+        ctx.stroke();
+
+        // Core white line
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(slashX, slashY, slashRadius, slashStartAngle, slashEndAngle);
+        ctx.stroke();
+
         ctx.restore();
       }
 
@@ -1317,8 +1341,13 @@
       if (lp) {
         var targetCameraY = lp.position.y - CANVAS_H * 0.6;
         if (targetCameraY > 0) targetCameraY = 0;
-        if (targetCameraY < -2000) targetCameraY = -2000;
-        cameraY = cameraY + (targetCameraY - cameraY) * 0.08;
+        // No minimum clamp - camera follows player to any height
+        var cameraDiff = Math.abs(targetCameraY - cameraY);
+        if (cameraDiff > 500) {
+          cameraY = targetCameraY; // Snap instantly for large jumps
+        } else {
+          cameraY = cameraY + (targetCameraY - cameraY) * 0.15;
+        }
       }
     }
 
