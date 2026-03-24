@@ -91,6 +91,7 @@ io.on('connection', (socket) => {
       },
       currentWeapon: null,
       weaponCooldownUntil: 0,
+      bombCooldownUntil: 0,
       freezeUntil: 0,
       shieldSplitterUntil: 0,
       damageMitigation: 0,
@@ -148,11 +149,12 @@ io.on('connection', (socket) => {
     // If player has a melee weapon, use its stats
     let weaponOverride: { damage: number; knockbackModifier: number } | undefined;
     if (player.currentWeapon && player.currentWeapon.category === 'melee') {
-      gameLoop.getItemSpawnManager().handleMeleeWeaponAttack(match, socket.id, io);
+      // Capture stats before handleMeleeWeaponAttack may null out currentWeapon on last durability hit
       weaponOverride = {
         damage: player.currentWeapon.damage,
         knockbackModifier: player.currentWeapon.knockbackModifier,
       };
+      gameLoop.getItemSpawnManager().handleMeleeWeaponAttack(match, socket.id, io);
     }
 
     const results = performAttack(player, match.players, weaponOverride);
@@ -190,6 +192,10 @@ io.on('connection', (socket) => {
     const player = match.players.find(p => p.id === socket.id);
     if (!player || player.status !== 'alive') return;
 
+    const now = Date.now();
+    if (player.bombCooldownUntil > now) return;
+    player.bombCooldownUntil = now + 2000;
+
     const bomb = createBomb(player, player.facing);
     match.bombs.push(bomb);
     io.to(roomId).emit('bomb:thrown', { bomb });
@@ -208,7 +214,25 @@ io.on('connection', (socket) => {
     if (!roomId) return;
     const match = roomManager.getRoom(roomId);
     if (!match || match.state !== 'active') return;
-    gameLoop.getItemSpawnManager().handleUseWeapon(match, socket.id, io);
+    const player = match.players.find(p => p.id === socket.id);
+    if (!player || player.status !== 'alive') return;
+
+    if (player.currentWeapon && player.currentWeapon.category === 'melee') {
+      // Capture weapon stats before handleMeleeWeaponAttack may null out currentWeapon
+      const weaponOverride = {
+        damage: player.currentWeapon.damage,
+        knockbackModifier: player.currentWeapon.knockbackModifier,
+      };
+      // Decrement durability and apply weapon cooldown
+      gameLoop.getItemSpawnManager().handleMeleeWeaponAttack(match, socket.id, io);
+      const results = performAttack(player, match.players, weaponOverride);
+      if (results.length > 0) {
+        io.to(roomId).emit('player:hit', { results, type: 'melee', attackerId: socket.id });
+      }
+    } else {
+      // Thrown weapons: launch projectile
+      gameLoop.getItemSpawnManager().handleUseWeapon(match, socket.id, io);
+    }
   });
 
   socket.on('match:start', () => {
