@@ -91,6 +91,7 @@ io.on('connection', (socket) => {
       },
       currentWeapon: null,
       weaponCooldownUntil: 0,
+      bombCooldownUntil: 0,
       freezeUntil: 0,
       shieldSplitterUntil: 0,
       damageMitigation: 0,
@@ -189,6 +190,10 @@ io.on('connection', (socket) => {
     if (!match || match.state !== 'active') return;
     const player = match.players.find(p => p.id === socket.id);
     if (!player || player.status !== 'alive') return;
+
+    const now = Date.now();
+    if (player.bombCooldownUntil > now) return;
+    player.bombCooldownUntil = now + 2000;
 
     const bomb = createBomb(player, player.facing);
     match.bombs.push(bomb);

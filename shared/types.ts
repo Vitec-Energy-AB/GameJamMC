@@ -95,6 +95,7 @@ export interface Player {
   respawnTimer?: number;
   currentWeapon: WeaponItem | null;
   weaponCooldownUntil: number;
+  bombCooldownUntil: number;
   freezeUntil: number;
   shieldSplitterUntil: number;
   damageMitigation: number;
