@@ -203,6 +203,8 @@
     // Platforms
     'Tile_Platform': '/sprites/Tile_Platform.png',
     'Tile_Platform_vegetables': '/sprites/Tile_Platform_vegetables.png',
+    'Tile_CrumblingPlatform': '/sprites/Tile_CrumblingPlatform.png',
+    'Tile_MovingPlatform': '/sprites/Tile_MovingPlatform.png',
     // Backgrounds
     'Background_Cave': '/sprites/Background_Cave.png',
     'Background_Factory': '/sprites/Background_Factory.png',
@@ -845,8 +847,25 @@
     for (var i = 0; i < movingPlatforms.length; i++) {
       var mp = movingPlatforms[i];
       var p = mp.platform;
-      ctx.fillStyle = '#2980b9';
-      ctx.fillRect(p.x, p.y, p.width, p.height);
+
+      // Try to use sprite if available
+      if (spritesLoaded && sprites['Tile_MovingPlatform'] && sprites['Tile_MovingPlatform'].complete) {
+        var sprite = sprites['Tile_MovingPlatform'];
+        var pattern = ctx.createPattern(sprite, 'repeat');
+        if (pattern) {
+          ctx.fillStyle = pattern;
+          ctx.fillRect(p.x, p.y, p.width, p.height);
+        } else {
+          // Fallback to gradient
+          ctx.fillStyle = '#2980b9';
+          ctx.fillRect(p.x, p.y, p.width, p.height);
+        }
+      } else {
+        // Fallback when sprite not loaded
+        ctx.fillStyle = '#2980b9';
+        ctx.fillRect(p.x, p.y, p.width, p.height);
+      }
+
       ctx.fillStyle = '#5dade2';
       ctx.fillRect(p.x, p.y, p.width, 5);
       ctx.strokeStyle = '#1a5276';
@@ -865,8 +884,25 @@
       if (!p) continue;
       var alpha = cp.state === 'crumbling' ? 0.5 : 1.0;
       ctx.globalAlpha = alpha;
-      ctx.fillStyle = cp.state === 'crumbling' ? '#e74c3c' : '#8e44ad';
-      ctx.fillRect(p.x, p.y, p.width, p.height);
+
+      // Try to use sprite if available
+      if (spritesLoaded && sprites['Tile_CrumblingPlatform'] && sprites['Tile_CrumblingPlatform'].complete) {
+        var sprite = sprites['Tile_CrumblingPlatform'];
+        var pattern = ctx.createPattern(sprite, 'repeat');
+        if (pattern) {
+          ctx.fillStyle = pattern;
+          ctx.fillRect(p.x, p.y, p.width, p.height);
+        } else {
+          // Fallback to solid color
+          ctx.fillStyle = cp.state === 'crumbling' ? '#e74c3c' : '#8e44ad';
+          ctx.fillRect(p.x, p.y, p.width, p.height);
+        }
+      } else {
+        // Fallback when sprite not loaded
+        ctx.fillStyle = cp.state === 'crumbling' ? '#e74c3c' : '#8e44ad';
+        ctx.fillRect(p.x, p.y, p.width, p.height);
+      }
+
       ctx.fillStyle = cp.state === 'crumbling' ? '#ff7675' : '#a569bd';
       ctx.fillRect(p.x, p.y, p.width, 5);
       ctx.globalAlpha = 1.0;
