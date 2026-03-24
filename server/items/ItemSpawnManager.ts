@@ -200,18 +200,15 @@ export class ItemSpawnManager {
         // It's a weapon
         const weapon = item as WeaponItem;
 
-        // Drop existing weapon
+        // Despawn existing weapon (remove it entirely)
         if (player.currentWeapon) {
           const dropped = player.currentWeapon;
-          dropped.pickedUpBy = null;
-          dropped.position = { x: player.position.x, y: player.position.y };
-          dropped.spawnTime = now;
-          // Do NOT push to match.items again — the weapon reference is already there.
-          // Only push if it was somehow removed (defensive check).
-          if (!match.items.includes(dropped)) {
-            match.items.push(dropped);
+          const dropIdx = match.items.indexOf(dropped);
+          if (dropIdx !== -1) {
+            match.items.splice(dropIdx, 1);
           }
-          io.to(match.roomId).emit('item:drop', { itemId: dropped.id, position: dropped.position, despawned: false });
+          dropped.active = false;
+          io.to(match.roomId).emit('item:drop', { itemId: dropped.id, despawned: true });
         }
 
         weapon.pickedUpBy = playerId;
