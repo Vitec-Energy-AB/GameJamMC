@@ -1,14 +1,14 @@
 import { Match, Platform } from '../../shared/types';
 import { Server } from 'socket.io';
 
-const VERTICAL_GAP_MIN = 60;
-const VERTICAL_GAP_MAX = 90;
-const PLATFORMS_PER_ROW_MIN = 3;
-const PLATFORMS_PER_ROW_MAX = 4;
-const PLATFORM_WIDTH_MIN = 80;
-const PLATFORM_WIDTH_MAX = 200;
+const VERTICAL_GAP_MIN = 100;
+const VERTICAL_GAP_MAX = 160;
+const PLATFORMS_PER_ROW_MIN = 1;
+const PLATFORMS_PER_ROW_MAX = 2;
+const PLATFORM_WIDTH_MIN = 60;
+const PLATFORM_WIDTH_MAX = 150;
 const PLATFORM_HEIGHT = 15;
-const GENERATION_AHEAD = 600; // Generate platforms 600px above lava
+const GENERATION_AHEAD = 300; // Generate platforms 300px above lava
 const MAP_WIDTH = 1200;
 const PLATFORM_MARGIN = 30;
 const MIN_PLATFORM_SPACING = 30; // Minimum horizontal gap between platforms
@@ -40,14 +40,8 @@ export function updatePlatformGeneration(match: Match, io: Server): void {
 
   const targetY = lava.currentY - GENERATION_AHEAD;
 
-  const elapsed = (Date.now() - lava.startedAt) / 1000;
-  const timeRising = Math.max(0, elapsed - lava.startDelay);
-  // As lava gets faster, shrink the gap (down to 60% of original at high speeds).
-  // 0.005 = 0.5% reduction per second, reaching 60% after ~80 s of rising.
-  const speedFactor = Math.max(0.6, 1.0 - timeRising * 0.005);
-
   while (state.highestGeneratedY > targetY) {
-    const gap = (VERTICAL_GAP_MIN + Math.random() * (VERTICAL_GAP_MAX - VERTICAL_GAP_MIN)) * speedFactor;
+    const gap = VERTICAL_GAP_MIN + Math.random() * (VERTICAL_GAP_MAX - VERTICAL_GAP_MIN);
     const newY = state.highestGeneratedY - gap;
 
     const numPlatforms = PLATFORMS_PER_ROW_MIN +

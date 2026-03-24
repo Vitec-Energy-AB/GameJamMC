@@ -2,10 +2,10 @@ import { Match, Player } from '../../shared/types';
 import { Server } from 'socket.io';
 import { PLAYER_HEIGHT } from '../../shared/constants';
 
-export const DEFAULT_LAVA_RISE_SPEED = 8;
+export const DEFAULT_LAVA_RISE_SPEED = 25;
 export const DEFAULT_LAVA_DAMAGE = 50;
-export const DEFAULT_START_DELAY = 15;
-export const DEFAULT_ACCELERATION = 0.5;
+export const DEFAULT_START_DELAY = 8;
+export const DEFAULT_ACCELERATION = 1.5;
 const LAVA_DAMAGE_INTERVAL = 500;
 
 // Keyed by `${roomId}:${playerId}` to support multiple simultaneous matches
