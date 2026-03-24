@@ -102,6 +102,9 @@ export class GameLoop {
         }
       }
 
+      // Auto-pickup items for all alive players
+      this.itemSpawnManager.checkAutoPickup(match, io);
+
       // Update bombs
       for (let i = match.bombs.length - 1; i >= 0; i--) {
         const bomb = match.bombs[i];

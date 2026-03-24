@@ -283,6 +283,13 @@ export class ItemSpawnManager {
     return null;
   }
 
+  checkAutoPickup(match: Match, io: Server): void {
+    for (const player of match.players) {
+      if (player.status !== 'alive') continue;
+      this.handlePickup(match, player.id, io);
+    }
+  }
+
   handleMeleeWeaponAttack(match: Match, playerId: string, io: Server): void {
     const player = match.players.find(p => p.id === playerId);
     if (!player || player.status !== 'alive' || !player.currentWeapon) return;
