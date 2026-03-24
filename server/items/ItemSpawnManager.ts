@@ -35,7 +35,7 @@ const WEAPON_TEMPLATES: WeaponTemplate[] = [
     rarity: 'uncommon',
   },
   {
-    type: 'energyblade',
+    type: 'lasergun',
     category: 'melee',
     damage: 8,
     knockbackModifier: 0.8,

@@ -11,7 +11,7 @@ export interface InputState {
 
 export interface WeaponItem {
   id: string;
-  type: 'steelclub' | 'energyblade' | 'fireaxe' | 'lightningspear' | 'icecrystal';
+  type: 'steelclub' | 'lasergun' | 'fireaxe' | 'lightningspear' | 'icecrystal';
   category: 'melee' | 'thrown';
   position: { x: number; y: number };
   pickedUpBy: string | null;
