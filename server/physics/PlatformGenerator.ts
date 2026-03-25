@@ -9,6 +9,7 @@ const PLATFORM_WIDTH_MIN = 60;
 const PLATFORM_WIDTH_MAX = 150;
 const PLATFORM_HEIGHT = 15;
 const GENERATION_AHEAD = 300; // Generate platforms 300px above lava
+const PLAYER_GENERATION_AHEAD = 400; // Generate platforms 400px above highest player
 const MAP_WIDTH = 1200;
 const PLATFORM_MARGIN = 30;
 const MIN_PLATFORM_SPACING = 30; // Minimum horizontal gap between platforms
@@ -31,14 +32,19 @@ export function initPlatformGenerator(match: Match): void {
   });
 }
 
-export function updatePlatformGeneration(match: Match, io: Server): void {
+export function updatePlatformGeneration(match: Match, io: Server, highestPlayerY: number): void {
   const lava = match.lavaState;
-  if (!lava || !lava.active) return;
 
   const state = generatorStates.get(match.roomId);
   if (!state) return;
 
-  const targetY = lava.currentY - GENERATION_AHEAD;
+  // Determine how far ahead to generate: furthest of player-based and lava-based targets
+  // (lower Y value = higher on screen)
+  let targetY = highestPlayerY - PLAYER_GENERATION_AHEAD;
+  if (lava && lava.active) {
+    const lavaTargetY = lava.currentY - GENERATION_AHEAD;
+    targetY = Math.min(targetY, lavaTargetY);
+  }
 
   while (state.highestGeneratedY > targetY) {
     const gap = VERTICAL_GAP_MIN + Math.random() * (VERTICAL_GAP_MAX - VERTICAL_GAP_MIN);
@@ -91,9 +97,11 @@ export function updatePlatformGeneration(match: Match, io: Server): void {
         x: sp.x + sp.width / 2,
         y: sp.y - 60,
       });
-      match.map.spawnPoints = match.map.spawnPoints.filter(
-        s => s.y < lava.currentY - 50
-      );
+      if (lava && lava.active) {
+        match.map.spawnPoints = match.map.spawnPoints.filter(
+          s => s.y < lava.currentY - 50
+        );
+      }
     }
 
     state.highestGeneratedY = newY;
@@ -104,8 +112,11 @@ export function updatePlatformGeneration(match: Match, io: Server): void {
     });
   }
 
-  // Clean up platforms far below lava (performance)
-  const cleanupThreshold = lava.currentY + 200;
+  // Clean up platforms far below the current action zone (performance)
+  let cleanupThreshold = highestPlayerY + 800; // 800px below the highest player
+  if (lava && lava.active) {
+    cleanupThreshold = Math.min(cleanupThreshold, lava.currentY + 200);
+  }
   match.map.platforms = match.map.platforms.filter(p => p.y < cleanupThreshold);
 }
 
