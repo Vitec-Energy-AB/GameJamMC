@@ -2,12 +2,43 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Platform Fighter</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #111; color: #eee; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
-    #gameCanvas { display: block; background: #1a1a2e; }
+    #gameCanvas { display: block; background: #1a1a2e; touch-action: none; user-select: none; }
+    /* ── Mobile touch controls ──────────────────────────────────────────────── */
+    #shootBtn {
+      position: fixed;
+      bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+      right: calc(24px + env(safe-area-inset-right, 0px));
+      width: 88px;
+      height: 88px;
+      border-radius: 50%;
+      background: rgba(233, 69, 96, 0.85);
+      border: 3px solid rgba(255,255,255,0.4);
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: bold;
+      letter-spacing: 0.05em;
+      text-align: center;
+      line-height: 1.2;
+      cursor: pointer;
+      z-index: 50;
+      touch-action: none;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+      display: none;
+    }
+    #shootBtn.active {
+      background: rgba(233, 69, 96, 1);
+      transform: scale(0.93);
+    }
+    @media (pointer: coarse) {
+      #shootBtn { display: flex; align-items: center; justify-content: center; flex-direction: column; }
+    }
     #lobbyOverlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0,0,0,0.85); display: flex; flex-direction: column;
@@ -104,6 +135,8 @@
 <button id="musicToggle">&#x1F3B5; Music: OFF</button>
 
 <canvas id="gameCanvas" width="1200" height="700"></canvas>
+
+<button id="shootBtn" aria-label="Shoot">&#x2694;&#xFE0F;<br>SHOOT</button>
 
 <div id="lobbyOverlay">
   <div class="lobby-box">
@@ -612,6 +645,80 @@
       case 'KeyQ': case 'KeyX': localInput.useWeapon = false; break;
     }
   });
+
+  // ── Touch / Swipe Input ─────────────────────────────────────────────────────
+  (function() {
+    var SWIPE_THRESHOLD = 30; // CSS px – minimum displacement to register a direction
+    var shootBtn = document.getElementById('shootBtn');
+
+    // Track the active swipe session (one finger on the playfield at a time)
+    var swipePointerId = null;
+    var swipeStartX = 0;
+    var swipeStartY = 0;
+
+    function clearSwipeActions() {
+      localInput.left = false;
+      localInput.right = false;
+      localInput.jump = false;
+      localInput.duck = false;
+    }
+
+    function applySwipe(dx, dy) {
+      localInput.left  = dx < -SWIPE_THRESHOLD;
+      localInput.right = dx >  SWIPE_THRESHOLD;
+      // up swipe → jump; down swipe → duck
+      localInput.jump  = dy < -SWIPE_THRESHOLD;
+      localInput.duck  = dy >  SWIPE_THRESHOLD;
+    }
+
+    function isOnShootBtn(target) {
+      return target === shootBtn || (shootBtn && shootBtn.contains(target));
+    }
+
+    canvas.addEventListener('pointerdown', function(e) {
+      if (isOnShootBtn(e.target)) return;
+      if (swipePointerId !== null) return; // already tracking a swipe
+      swipePointerId = e.pointerId;
+      swipeStartX = e.clientX;
+      swipeStartY = e.clientY;
+      try { canvas.setPointerCapture(e.pointerId); } catch(_) {}
+      e.preventDefault();
+    }, { passive: false });
+
+    canvas.addEventListener('pointermove', function(e) {
+      if (e.pointerId !== swipePointerId) return;
+      applySwipe(e.clientX - swipeStartX, e.clientY - swipeStartY);
+      e.preventDefault();
+    }, { passive: false });
+
+    function endSwipe(e) {
+      if (e.pointerId !== swipePointerId) return;
+      swipePointerId = null;
+      clearSwipeActions();
+    }
+
+    canvas.addEventListener('pointerup', endSwipe);
+    canvas.addEventListener('pointercancel', endSwipe);
+
+    // ── Shoot button ────────────────────────────────────────────────────────────
+    if (shootBtn) {
+      shootBtn.addEventListener('pointerdown', function(e) {
+        localInput.attack = true;
+        shootBtn.classList.add('active');
+        try { shootBtn.setPointerCapture(e.pointerId); } catch(_) {}
+        e.preventDefault();
+      }, { passive: false });
+
+      function releaseShoot(e) {
+        localInput.attack = false;
+        shootBtn.classList.remove('active');
+      }
+
+      shootBtn.addEventListener('pointerup', releaseShoot);
+      shootBtn.addEventListener('pointercancel', releaseShoot);
+      shootBtn.addEventListener('pointerleave', releaseShoot);
+    }
+  }());
 
   // ── Socket ──────────────────────────────────────────────────────────────────
   function connectSocket() {
