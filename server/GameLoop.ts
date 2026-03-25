@@ -163,6 +163,11 @@ export class GameLoop {
       // === BOT AI UPDATE ===
       this.botManager.updateBots(match, now);
 
+      // Reset inLava flag before lava update so gravity skips work on previous-tick state
+      for (const player of match.players) {
+        if (player.status === 'alive') player.inLava = false;
+      }
+
       // Update rising lava
       updateLava(match, dt, io);
 

@@ -7,8 +7,9 @@ export const DEFAULT_LAVA_DAMAGE = 50;
 export const DEFAULT_START_DELAY = 8;
 export const DEFAULT_ACCELERATION = 1.5;
 const LAVA_DAMAGE_INTERVAL = 500;
-const LAVA_SINK_ACCEL = 150;   // extra downward acceleration while in lava (px/s²)
-const LAVA_DRAG_FACTOR = 3;    // horizontal drag coefficient while in lava (exponential decay base)
+const LAVA_MAX_SINK_SPEED = 35;   // max downward velocity in lava (px/s) — very slow like quicksand
+const LAVA_DRAG = 0.88;           // per-frame velocity multiplier (exponential decay) for all axes
+export const LAVA_JUMP_MULTIPLIER = 0.55;  // jump in lava = 55% of normal
 
 // Keyed by `${roomId}:${playerId}` to support multiple simultaneous matches
 const lastLavaDamage: Map<string, number> = new Map();
@@ -45,9 +46,18 @@ export function updateLava(match: Match, dt: number, io: Server): void {
     const playerBottom = player.position.y + PLAYER_HEIGHT;
 
     if (playerBottom >= lava.currentY) {
-      // Apply lava physics every frame: horizontal drag (exponential decay) and sinking force
-      player.velocity.x *= Math.exp(-LAVA_DRAG_FACTOR * dt);
-      player.velocity.y += LAVA_SINK_ACCEL * dt;
+      // Set inLava flag (read by Gravity.ts to disable normal gravity)
+      player.inLava = true;
+
+      // Heavy drag on both axes — like moving through molasses
+      player.velocity.x *= LAVA_DRAG;
+      player.velocity.y *= LAVA_DRAG;
+
+      // Gentle downward pull capped at LAVA_MAX_SINK_SPEED (quicksand-style)
+      player.velocity.y = Math.min(player.velocity.y + 20 * dt, LAVA_MAX_SINK_SPEED);
+
+      // Give back 1 jump so the player can attempt to escape
+      if (player.jumpsRemaining === 0) player.jumpsRemaining = 1;
 
       const key = `${match.roomId}:${player.id}`;
       const lastDmg = lastLavaDamage.get(key) ?? 0;
