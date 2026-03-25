@@ -34,7 +34,7 @@ export class Renderer {
     for (const p of platforms) {
       const r = Math.min(5, p.height / 2, p.width / 2);
       this.ctx.save();
-      this.ctx.shadowColor = 'rgba(0,0,0,0.35)';
+      this.ctx.shadowColor = 'rgba(0,0,0,0.45)';
       this.ctx.shadowBlur = 8;
       this.ctx.shadowOffsetY = 3;
       this.platformPath(p.x, p.y, p.width, p.height, r);

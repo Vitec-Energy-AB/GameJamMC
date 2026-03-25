@@ -1367,7 +1367,6 @@
         // Drop shadow
         ctx.shadowColor = 'rgba(0,0,0,0.45)';
         ctx.shadowBlur = 10;
-        ctx.shadowOffsetX = 0;
         ctx.shadowOffsetY = 4;
 
         // Main body with rounded corners
@@ -1621,10 +1620,11 @@
       ctx.lineTo(p.x, p.y + r);
       ctx.arcTo(p.x, p.y, p.x + r, p.y, r);
       ctx.closePath();
-      var topCol = isCrumbling ? 'rgba(255,118,117,' : 'rgba(165,105,189,';
+      var topGradStart = isCrumbling ? 'rgba(255,118,117,0.8)' : 'rgba(165,105,189,0.8)';
+      var topGradEnd = isCrumbling ? 'rgba(255,118,117,0.0)' : 'rgba(165,105,189,0.0)';
       var topGrad = ctx.createLinearGradient(p.x, p.y, p.x, p.y + 4);
-      topGrad.addColorStop(0, topCol + '0.8)');
-      topGrad.addColorStop(1, topCol + '0.0)');
+      topGrad.addColorStop(0, topGradStart);
+      topGrad.addColorStop(1, topGradEnd);
       ctx.fillStyle = topGrad;
       ctx.fill();
       ctx.restore();
