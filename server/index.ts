@@ -49,6 +49,14 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', uptime: process.uptime() });
 });
 
+app.get('/sw.js', pageRateLimit, (_req, res) => {
+  res.sendFile(path.join(__dirname, '../../client/sw.js'));
+});
+
+app.get('/manifest.json', pageRateLimit, (_req, res) => {
+  res.sendFile(path.join(__dirname, '../../client/manifest.json'));
+});
+
 app.get('/:roomId', pageRateLimit, (_req, res) => {
   res.sendFile(path.join(__dirname, '../../client/index.html'));
 });

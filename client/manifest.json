@@ -1,0 +1,24 @@
+{
+  "name": "Platform Fighter",
+  "short_name": "PFighter",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#111",
+  "theme_color": "#1a1a2e",
+  "icons": [
+    {
+      "src": "/resources/Titel.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/resources/Titel.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
