@@ -481,6 +481,40 @@ Lägg till en spelare som kan hoppa och röra sig åt vänster och höger.
 
 ---
 
+## 📱 Mobile Controls
+
+On touch devices (phones, tablets) the game automatically shows touch controls:
+
+| Action | Gesture |
+|--------|---------|
+| Move left | Swipe left on the game screen |
+| Move right | Swipe right on the game screen |
+| Jump | Swipe up on the game screen |
+| Duck / drop | Swipe down on the game screen |
+| Shoot / Attack | Tap and hold the **SHOOT** button (bottom-right corner) |
+
+**Multi-touch**: you can hold the SHOOT button with one finger and swipe to move with another simultaneously.
+
+The SHOOT button is only visible on touch devices (`@media (pointer: coarse)`). Desktop users continue to use keyboard controls as before.
+
+### Keyboard controls (desktop)
+
+| Action | Key(s) |
+|--------|--------|
+| Move left/right | ← → or A D |
+| Jump | ↑ / W / Space |
+| Duck | ↓ / S (hold 2 s to drop through platform) |
+| Attack | Z |
+| Block | C |
+| Throw Bomb | B |
+| Pickup Item | E |
+| Use Weapon | Q / X |
+| Music toggle | M |
+
+---
+
+
+
 ## 🏆 Online Leaderboard & Player Profile
 
 ### Overview
