@@ -199,6 +199,8 @@
     'Sword': '/sprites/Sword.png',
     'FireAxe': '/sprites/FireAxe.png',
     'LaserGun': '/sprites/LaserGun.png',
+    'LightningSpear': '/sprites/LightningSpear.png',
+    'IceCrystal': '/sprites/IceCrystal.png',
     'PowerUp': '/sprites/PowerUp.png',
     // Platforms
     'Tile_Platform': '/sprites/Tile_Platform.png',
@@ -920,7 +922,9 @@
   var WEAPON_SPRITES = {
     steelclub: 'Sword',
     lasergun: 'LaserGun',
-    fireaxe: 'FireAxe'
+    fireaxe: 'FireAxe',
+    lightningspear: 'LightningSpear',
+    icecrystal: 'IceCrystal'
   };
   var POWERUP_COLORS = { shieldsplitter: '#e74c3c', lifecore: '#2ecc71', forcefield: '#00e5ff' };
   var POWERUP_SYMBOLS = { shieldsplitter: '💥', lifecore: '💚', forcefield: '🛡️' };
@@ -1002,22 +1006,42 @@
       if (!proj.active) continue;
       ctx.save();
       if (proj.type === 'lightningspear') {
-        ctx.strokeStyle = '#fdcb6e';
-        ctx.lineWidth = 4;
-        ctx.shadowColor = '#fdcb6e';
-        ctx.shadowBlur = 8;
-        var dir = proj.velocity.x >= 0 ? 1 : -1;
-        ctx.beginPath();
-        ctx.moveTo(proj.position.x, proj.position.y);
-        ctx.lineTo(proj.position.x - dir * 24, proj.position.y + 2);
-        ctx.stroke();
+        // Try to use sprite if available
+        if (spritesLoaded && sprites['LightningSpear'] && sprites['LightningSpear'].complete) {
+          var dir = proj.velocity.x >= 0 ? 1 : -1;
+          ctx.save();
+          if (dir === -1) {
+            ctx.scale(-1, 1);
+            ctx.drawImage(sprites['LightningSpear'], -proj.position.x - 20, proj.position.y - 10, 40, 20);
+          } else {
+            ctx.drawImage(sprites['LightningSpear'], proj.position.x - 20, proj.position.y - 10, 40, 20);
+          }
+          ctx.restore();
+        } else {
+          // Fallback to line drawing
+          ctx.strokeStyle = '#fdcb6e';
+          ctx.lineWidth = 4;
+          ctx.shadowColor = '#fdcb6e';
+          ctx.shadowBlur = 8;
+          var dir = proj.velocity.x >= 0 ? 1 : -1;
+          ctx.beginPath();
+          ctx.moveTo(proj.position.x, proj.position.y);
+          ctx.lineTo(proj.position.x - dir * 24, proj.position.y + 2);
+          ctx.stroke();
+        }
       } else if (proj.type === 'icecrystal') {
-        ctx.fillStyle = '#74b9ff';
-        ctx.shadowColor = '#0984e3';
-        ctx.shadowBlur = 10;
-        ctx.beginPath();
-        ctx.arc(proj.position.x, proj.position.y, 8, 0, Math.PI * 2);
-        ctx.fill();
+        // Try to use sprite if available
+        if (spritesLoaded && sprites['IceCrystal'] && sprites['IceCrystal'].complete) {
+          ctx.drawImage(sprites['IceCrystal'], proj.position.x - 16, proj.position.y - 16, 32, 32);
+        } else {
+          // Fallback to circle drawing
+          ctx.fillStyle = '#74b9ff';
+          ctx.shadowColor = '#0984e3';
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          ctx.arc(proj.position.x, proj.position.y, 8, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
       ctx.restore();
     }
