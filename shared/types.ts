@@ -109,6 +109,7 @@ export interface Player {
   attackAnimUntil?: number;
   isDucking?: boolean;
   duckStartTime?: number;
+  inLava?: boolean;
 }
 
 export interface Bomb {

@@ -210,6 +210,7 @@ describe('BotAI.evaluate – attack falls through to melee when weapon on cooldo
         active: true,
       },
       weaponCooldownUntil: futureTime + 5000, // weapon on cooldown far in the future
+      bombCooldownUntil: futureTime + 5000, // bomb also on cooldown
     });
     const enemy = makePlayer({
       id: 'enemy-1',
@@ -231,7 +232,7 @@ describe('BotAI.evaluate – attack falls through to melee when weapon on cooldo
         break;
       }
     }
-    // With difficulty 5 (accuracy 0.95) and 50 attempts, melee should trigger
+    // With difficulty 5 (accuracy 0.98) and 50 attempts, melee should trigger
     expect(meleeAttacked).toBe(true);
   });
 });
