@@ -13,6 +13,7 @@ import { updateCrumblingPlatforms, getCrumblingPlatformForCollision } from './ph
 import { ItemSpawnManager } from './items/ItemSpawnManager';
 import { initLavaState, updateLava, resetLavaDamageTracking } from './physics/LavaSystem';
 import { initPlatformGenerator, updatePlatformGeneration, resetPlatformGenerator } from './physics/PlatformGenerator';
+import { BotManager } from './bots/BotManager';
 
 const TICK_RATE = 60;
 const TICK_INTERVAL = 1000 / TICK_RATE;
@@ -27,10 +28,12 @@ export class GameLoop {
   private duckStartTimes: Map<string, number> = new Map();
   private matchManager: MatchManager;
   private itemSpawnManager: ItemSpawnManager;
+  private botManager: BotManager;
 
-  constructor(matchManager: MatchManager) {
+  constructor(matchManager: MatchManager, botManager?: BotManager) {
     this.matchManager = matchManager;
     this.itemSpawnManager = new ItemSpawnManager();
+    this.botManager = botManager ?? new BotManager();
   }
 
   startGame(roomId: string, match: Match, io: Server): void {
@@ -158,6 +161,9 @@ export class GameLoop {
       // Auto-pickup items for all alive players
       this.itemSpawnManager.checkAutoPickup(match, io);
 
+      // === BOT AI UPDATE ===
+      this.botManager.updateBots(match, now);
+
       // Update rising lava
       updateLava(match, dt, io);
 
@@ -232,6 +238,10 @@ export class GameLoop {
 
   getItemSpawnManager(): ItemSpawnManager {
     return this.itemSpawnManager;
+  }
+
+  getBotManager(): BotManager {
+    return this.botManager;
   }
 }
 

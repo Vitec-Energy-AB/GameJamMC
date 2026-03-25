@@ -15,6 +15,7 @@ import { CHARACTERS, getCharacter } from '../shared/characters';
 import { FileLeaderboardStore } from './leaderboard/FileLeaderboardStore';
 import { LeaderboardService } from './leaderboard/LeaderboardService';
 import { createLeaderboardRouter } from './leaderboard/leaderboardRouter';
+import { BotManager } from './bots/BotManager';
 
 const app = express();
 const httpServer = createServer(app);
@@ -59,7 +60,8 @@ app.get('/', pageRateLimit, (_req, res) => {
 const sessionManager = new SessionManager();
 const roomManager = new RoomManager();
 const matchManager = new MatchManager(leaderboardService);
-const gameLoop = new GameLoop(matchManager);
+const botManager = new BotManager();
+const gameLoop = new GameLoop(matchManager, botManager);
 const lobbyManager = new LobbyManager(matchManager, gameLoop);
 const mapSelector = new MapSelector();
 
@@ -256,6 +258,46 @@ io.on('connection', (socket) => {
     const match = roomManager.getRoom(roomId);
     if (!match) return;
     gameLoop.startGame(roomId, match, io);
+  });
+
+  socket.on('bot:add', (data: { difficulty?: number; character?: string }) => {
+    const roomId = playerRoom.get(socket.id);
+    if (!roomId) return;
+    const match = roomManager.getRoom(roomId);
+    if (!match || match.state !== 'lobby') return;
+
+    const difficulty = (
+      typeof data.difficulty === 'number' &&
+      data.difficulty >= 1 &&
+      data.difficulty <= 5
+        ? data.difficulty
+        : 3
+    ) as 1 | 2 | 3 | 4 | 5;
+
+    const bot = botManager.addBot(match, difficulty, data.character);
+    if (bot) {
+      io.to(roomId).emit('room:update', match);
+    }
+  });
+
+  socket.on('bot:remove', (data: { botId: string }) => {
+    const roomId = playerRoom.get(socket.id);
+    if (!roomId) return;
+    const match = roomManager.getRoom(roomId);
+    if (!match || match.state !== 'lobby') return;
+
+    botManager.removeBot(match, data.botId);
+    io.to(roomId).emit('room:update', match);
+  });
+
+  socket.on('bot:removeAll', () => {
+    const roomId = playerRoom.get(socket.id);
+    if (!roomId) return;
+    const match = roomManager.getRoom(roomId);
+    if (!match || match.state !== 'lobby') return;
+
+    botManager.removeAllBots(match);
+    io.to(roomId).emit('room:update', match);
   });
 
   socket.on('disconnect', () => {

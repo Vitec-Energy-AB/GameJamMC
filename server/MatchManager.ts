@@ -39,7 +39,8 @@ export class MatchManager {
     });
 
     // Submit winner's score to the leaderboard (server-side, single source of truth)
-    if (this.leaderboardService && winner && winnerId !== 'draw' && match.runId) {
+    // Skip leaderboard submission if the winner is a bot
+    if (this.leaderboardService && winner && winnerId !== 'draw' && match.runId && !winner.isBot) {
       const score = Math.max(0, winner.currentLives) * 100;
       try {
         this.leaderboardService.submitScore({
@@ -84,7 +85,7 @@ export class MatchManager {
 
     // Reset players
     for (const player of match.players) {
-      player.status = 'lobby';
+      player.status = player.isBot ? 'ready' : 'lobby';
       player.currentDamage = 0;
       player.velocity = { x: 0, y: 0 };
       player.currentWeapon = null;

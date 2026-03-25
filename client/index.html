@@ -229,6 +229,21 @@
 
     <button id="readyBtn">&#x2713; Ready Up!</button>
 
+    <div id="botSection" style="display:none; margin-top:12px;">
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <label style="color:#aaa; font-size:0.9rem; margin:0;">🤖 Add Bot:</label>
+        <select id="botDifficultySelect" style="width:auto; padding:6px 10px;">
+          <option value="1">★☆☆☆☆ Beginner</option>
+          <option value="2">★★☆☆☆ Easy</option>
+          <option value="3" selected>★★★☆☆ Normal</option>
+          <option value="4">★★★★☆ Hard</option>
+          <option value="5">★★★★★ Master</option>
+        </select>
+        <button id="addBotBtn" style="background:#3498db; color:#fff; padding:8px 16px;">+ Add Bot</button>
+        <button id="removeBotsBtn" style="background:#c0392b; color:#fff; padding:8px 16px;">✕ Remove All Bots</button>
+      </div>
+    </div>
+
     <div id="mapSection" style="display:none;">
       <h3>&#x1F5FA; Vote for Map</h3>
       <div class="map-cards" id="mapCards"></div>
@@ -924,6 +939,8 @@
         readyBtn.style.display = 'block';
         mapSection.style.display = 'block';
         joinSection.style.display = 'none';
+        var botSection = document.getElementById('botSection');
+        if (botSection) botSection.style.display = 'block';
       }
       updatePlayerList(data.match.players);
       statusMsg.textContent = 'Waiting for players... (need 2 to start)';
@@ -1130,6 +1147,25 @@
     readyBtn.textContent = '\u231B Waiting...';
   });
 
+  var addBotBtn = document.getElementById('addBotBtn');
+  var removeBotsBtn = document.getElementById('removeBotsBtn');
+  var botDifficultySelect = document.getElementById('botDifficultySelect');
+
+  if (addBotBtn) {
+    addBotBtn.addEventListener('click', function() {
+      if (!socket) return;
+      var difficulty = parseInt(botDifficultySelect.value, 10) || 3;
+      socket.emit('bot:add', { difficulty: difficulty });
+    });
+  }
+
+  if (removeBotsBtn) {
+    removeBotsBtn.addEventListener('click', function() {
+      if (!socket) return;
+      socket.emit('bot:removeAll');
+    });
+  }
+
   function escHtml(str) {
     return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
@@ -1140,9 +1176,17 @@
       var el = document.createElement('div');
       el.className = 'player-entry';
       var isReady = p.status === 'ready' || p.status === 'alive';
+      var stars = '';
+      if (p.isBot && p.botDifficulty) {
+        for (var s = 0; s < 5; s++) {
+          stars += s < p.botDifficulty ? '★' : '☆';
+        }
+      }
+      var nameLabel = (p.isBot ? '🤖 ' : '') + escHtml(p.name) + (p.id === localPlayerId ? ' (you)' : '');
+      if (p.isBot && stars) nameLabel += ' <span style="color:#f39c12;font-size:0.7rem;">' + stars + '</span>';
       el.innerHTML =
         '<div class="player-dot" style="background:' + (p.color || '#888') + '"></div>' +
-        '<span>' + escHtml(p.name) + (p.id === localPlayerId ? ' (you)' : '') + '</span>' +
+        '<span>' + nameLabel + '</span>' +
         '<span class="ready-badge ' + (isReady ? 'ready-yes' : 'ready-no') + '">' + (isReady ? 'Ready' : 'Waiting') + '</span>';
       playerListDiv.appendChild(el);
     });
@@ -1651,7 +1695,17 @@
       ctx.fillStyle = '#fff';
       ctx.font = 'bold 12px Segoe UI';
       ctx.textAlign = 'center';
-      ctx.fillText(p.name, x + PLAYER_W / 2, y - 18);
+      var displayName = (p.isBot ? '🤖 ' : '') + p.name;
+      ctx.fillText(displayName, x + PLAYER_W / 2, y - 18);
+
+      // Difficulty stars for bots
+      if (p.isBot && p.botDifficulty) {
+        var stars = '';
+        for (var si = 0; si < 5; si++) stars += si < p.botDifficulty ? '★' : '☆';
+        ctx.fillStyle = '#f39c12';
+        ctx.font = '9px Segoe UI';
+        ctx.fillText(stars, x + PLAYER_W / 2, y - 6);
+      }
 
       var dmgColor = p.currentDamage > 100 ? '#ff4444' : p.currentDamage > 50 ? '#ff8800' : '#ffffff';
       ctx.fillStyle = dmgColor;
@@ -1767,7 +1821,7 @@
       ctx.fillStyle = p.color || '#888';
       ctx.font = 'bold 13px Segoe UI';
       ctx.textAlign = 'left';
-      ctx.fillText(p.name, xi, 20);
+      ctx.fillText((p.isBot ? '🤖 ' : '') + p.name, xi, 20);
       var dmgCol = p.currentDamage > 100 ? '#ff4444' : p.currentDamage > 50 ? '#ff8800' : '#fff';
       ctx.fillStyle = dmgCol;
       ctx.font = 'bold 16px Segoe UI';
