@@ -963,6 +963,11 @@
       updatePlayerList(match.players);
     });
 
+    socket.on('bot:add:error', function(data) {
+      console.error('[Bot] Failed to add bot:', data.message);
+      alert('Failed to add bot: ' + data.message);
+    });
+
     socket.on('match:countdown', function(data) {
       countdownDiv.style.display = 'block';
       countdownDiv.textContent = data.count;

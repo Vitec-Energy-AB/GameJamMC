@@ -273,15 +273,18 @@ io.on('connection', (socket) => {
     const roomId = playerRoom.get(socket.id);
     if (!roomId) {
       console.log('[Bot] Player not in room', { socketId: socket.id });
+      socket.emit('bot:add:error', { message: 'You are not in a room' });
       return;
     }
     const match = roomManager.getRoom(roomId);
     if (!match) {
       console.log('[Bot] Room not found', { roomId });
+      socket.emit('bot:add:error', { message: 'Room not found' });
       return;
     }
     if (match.state !== 'lobby') {
       console.log('[Bot] Match not in lobby state', { roomId, state: match.state });
+      socket.emit('bot:add:error', { message: 'Cannot add bots after match has started' });
       return;
     }
 
@@ -300,6 +303,7 @@ io.on('connection', (socket) => {
       io.to(roomId).emit('room:update', match);
     } else {
       console.log('[Bot] Failed to add bot', { roomId });
+      socket.emit('bot:add:error', { message: 'Room is full (max players reached)' });
     }
   });
 
