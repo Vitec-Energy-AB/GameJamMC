@@ -239,8 +239,8 @@
           <option value="4">★★★★☆ Hard</option>
           <option value="5">★★★★★ Master</option>
         </select>
-        <button id="addBotBtn" style="background:#3498db; color:#fff; padding:8px 16px;">+ Add Bot</button>
-        <button id="removeBotsBtn" style="background:#c0392b; color:#fff; padding:8px 16px;">✕ Remove All Bots</button>
+        <button id="addBotBtn" style="background:#3498db; color:#fff; padding:8px 16px; cursor:pointer;">+ Add Bot</button>
+        <button id="removeBotsBtn" style="background:#c0392b; color:#fff; padding:8px 16px; cursor:pointer;">✕ Remove All Bots</button>
       </div>
     </div>
 
@@ -1105,19 +1105,37 @@
     var removeBotsBtn = document.getElementById('removeBotsBtn');
     var botDifficultySelect = document.getElementById('botDifficultySelect');
 
+    console.log('[Bot] Setting up bot button listeners', { addBotBtn: !!addBotBtn, removeBotsBtn: !!removeBotsBtn, socket: !!socket });
+
     if (addBotBtn) {
       addBotBtn.addEventListener('click', function() {
-        if (!socket) return;
+        console.log('[Bot] Add bot button clicked', { socket: !!socket, difficulty: botDifficultySelect?.value });
+        if (!socket) {
+          console.error('[Bot] No socket connection available');
+          return;
+        }
         var difficulty = parseInt(botDifficultySelect.value, 10) || 3;
+        console.log('[Bot] Emitting bot:add event', { difficulty: difficulty });
         socket.emit('bot:add', { difficulty: difficulty });
       });
+      console.log('[Bot] Add bot button listener attached successfully');
+    } else {
+      console.error('[Bot] Add bot button not found in DOM');
     }
 
     if (removeBotsBtn) {
       removeBotsBtn.addEventListener('click', function() {
-        if (!socket) return;
+        console.log('[Bot] Remove bots button clicked', { socket: !!socket });
+        if (!socket) {
+          console.error('[Bot] No socket connection available');
+          return;
+        }
+        console.log('[Bot] Emitting bot:removeAll event');
         socket.emit('bot:removeAll');
       });
+      console.log('[Bot] Remove bots button listener attached successfully');
+    } else {
+      console.error('[Bot] Remove bots button not found in DOM');
     }
   }
 
