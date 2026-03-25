@@ -1094,6 +1094,26 @@
         currentMatch.items = currentMatch.items.filter(function(i) { return i.id !== data.itemId; });
       }
     });
+
+    // Bot management button event listeners
+    var addBotBtn = document.getElementById('addBotBtn');
+    var removeBotsBtn = document.getElementById('removeBotsBtn');
+    var botDifficultySelect = document.getElementById('botDifficultySelect');
+
+    if (addBotBtn) {
+      addBotBtn.addEventListener('click', function() {
+        if (!socket) return;
+        var difficulty = parseInt(botDifficultySelect.value, 10) || 3;
+        socket.emit('bot:add', { difficulty: difficulty });
+      });
+    }
+
+    if (removeBotsBtn) {
+      removeBotsBtn.addEventListener('click', function() {
+        if (!socket) return;
+        socket.emit('bot:removeAll');
+      });
+    }
   }
 
   // ── Lobby UI ─────────────────────────────────────────────────────────────────
@@ -1146,25 +1166,6 @@
     readyBtn.disabled = true;
     readyBtn.textContent = '\u231B Waiting...';
   });
-
-  var addBotBtn = document.getElementById('addBotBtn');
-  var removeBotsBtn = document.getElementById('removeBotsBtn');
-  var botDifficultySelect = document.getElementById('botDifficultySelect');
-
-  if (addBotBtn) {
-    addBotBtn.addEventListener('click', function() {
-      if (!socket) return;
-      var difficulty = parseInt(botDifficultySelect.value, 10) || 3;
-      socket.emit('bot:add', { difficulty: difficulty });
-    });
-  }
-
-  if (removeBotsBtn) {
-    removeBotsBtn.addEventListener('click', function() {
-      if (!socket) return;
-      socket.emit('bot:removeAll');
-    });
-  }
 
   function escHtml(str) {
     return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
