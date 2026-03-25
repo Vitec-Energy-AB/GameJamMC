@@ -1101,53 +1101,65 @@
     });
 
     // Bot management button event listeners
-    var addBotBtn = document.getElementById('addBotBtn');
-    var removeBotsBtn = document.getElementById('removeBotsBtn');
-    var botDifficultySelect = document.getElementById('botDifficultySelect');
+    try {
+      var addBotBtn = document.getElementById('addBotBtn');
+      var removeBotsBtn = document.getElementById('removeBotsBtn');
+      var botDifficultySelect = document.getElementById('botDifficultySelect');
 
-    console.log('[Bot] Setting up bot button listeners', { addBotBtn: !!addBotBtn, removeBotsBtn: !!removeBotsBtn, socket: !!socket });
+      console.log('[Bot] Setting up bot button listeners', { addBotBtn: !!addBotBtn, removeBotsBtn: !!removeBotsBtn, socket: !!socket });
 
-    if (addBotBtn) {
-      addBotBtn.addEventListener('click', function() {
-        console.log('[Bot] Add bot button clicked', { socket: !!socket, difficulty: botDifficultySelect?.value });
-        if (!socket) {
-          console.error('[Bot] No socket connection available');
-          return;
-        }
-        var difficulty = parseInt(botDifficultySelect.value, 10) || 3;
-        console.log('[Bot] Emitting bot:add event', { difficulty: difficulty });
+      if (addBotBtn) {
+        addBotBtn.addEventListener('click', function() {
+          try {
+            console.log('[Bot] Add bot button clicked', { socket: !!socket, difficulty: botDifficultySelect ? botDifficultySelect.value : 'N/A' });
+            if (!socket) {
+              console.error('[Bot] No socket connection available');
+              return;
+            }
+            var difficulty = parseInt(botDifficultySelect.value, 10) || 3;
+            console.log('[Bot] Emitting bot:add event', { difficulty: difficulty });
 
-        // Provide visual feedback
-        var originalText = addBotBtn.textContent;
-        addBotBtn.disabled = true;
-        addBotBtn.textContent = '⏳ Adding...';
+            // Provide visual feedback
+            var originalText = addBotBtn.textContent;
+            addBotBtn.disabled = true;
+            addBotBtn.textContent = '⏳ Adding...';
 
-        socket.emit('bot:add', { difficulty: difficulty });
+            socket.emit('bot:add', { difficulty: difficulty });
 
-        // Re-enable after a short delay
-        setTimeout(function() {
-          addBotBtn.disabled = false;
-          addBotBtn.textContent = originalText;
-        }, 500);
-      });
-      console.log('[Bot] Add bot button listener attached successfully');
-    } else {
-      console.error('[Bot] Add bot button not found in DOM');
-    }
+            // Re-enable after a short delay
+            setTimeout(function() {
+              addBotBtn.disabled = false;
+              addBotBtn.textContent = originalText;
+            }, 500);
+          } catch (error) {
+            console.error('[Bot] Error in add bot click handler:', error);
+          }
+        });
+        console.log('[Bot] Add bot button listener attached successfully');
+      } else {
+        console.error('[Bot] Add bot button not found in DOM');
+      }
 
-    if (removeBotsBtn) {
-      removeBotsBtn.addEventListener('click', function() {
-        console.log('[Bot] Remove bots button clicked', { socket: !!socket });
-        if (!socket) {
-          console.error('[Bot] No socket connection available');
-          return;
-        }
-        console.log('[Bot] Emitting bot:removeAll event');
-        socket.emit('bot:removeAll');
-      });
-      console.log('[Bot] Remove bots button listener attached successfully');
-    } else {
-      console.error('[Bot] Remove bots button not found in DOM');
+      if (removeBotsBtn) {
+        removeBotsBtn.addEventListener('click', function() {
+          try {
+            console.log('[Bot] Remove bots button clicked', { socket: !!socket });
+            if (!socket) {
+              console.error('[Bot] No socket connection available');
+              return;
+            }
+            console.log('[Bot] Emitting bot:removeAll event');
+            socket.emit('bot:removeAll');
+          } catch (error) {
+            console.error('[Bot] Error in remove bots click handler:', error);
+          }
+        });
+        console.log('[Bot] Remove bots button listener attached successfully');
+      } else {
+        console.error('[Bot] Remove bots button not found in DOM');
+      }
+    } catch (error) {
+      console.error('[Bot] Error setting up bot button listeners:', error);
     }
   }
 
