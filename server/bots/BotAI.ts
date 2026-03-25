@@ -59,7 +59,14 @@ function resetInput(bot: Player): void {
  * Called every game tick. Decisions are rate-limited by `reactionTimeMs`.
  */
 export function evaluate(bot: Player, match: Match, now: number): void {
-  if (bot.status !== 'alive') return;
+  if (bot.status !== 'alive') {
+    // Auto-activate bots that are stuck in 'ready' state when the match is already running
+    if (bot.status === 'ready' && match.state === 'active') {
+      bot.status = 'alive';
+    } else {
+      return;
+    }
+  }
 
   const difficulty = bot.botDifficulty ?? 3;
   const config = getBotConfig(difficulty);
@@ -174,8 +181,12 @@ export function evaluate(bot: Player, match: Match, now: number): void {
       state.lastBehavior = 'attack';
       state.lastDecisionTime = now;
     }
-    tryBlock(bot, target, config, now);
-    attackTarget(bot, target, config, now);
+    // Don't block and attack in the same tick – blockSkill determines the chance to block
+    if (Math.random() < config.blockSkill) {
+      tryBlock(bot, target, config, now);
+    } else {
+      attackTarget(bot, target, config, now);
+    }
     // Also move toward the target so we don't just stand still
     chaseTarget(bot, target, match, config);
     return;
@@ -187,10 +198,9 @@ export function evaluate(bot: Player, match: Match, now: number): void {
       state.lastBehavior = 'chase';
       state.lastDecisionTime = now;
     }
-    if (state.lastBehavior === 'chase' || state.lastBehavior === 'attack') {
-      chaseTarget(bot, target, match, config);
-      return;
-    }
+    // Always chase when there's a target, regardless of last behavior
+    chaseTarget(bot, target, match, config);
+    return;
   }
 
   // ── 6. PATROL ─────────────────────────────────────────────────────────────
