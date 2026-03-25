@@ -261,10 +261,21 @@ io.on('connection', (socket) => {
   });
 
   socket.on('bot:add', (data: { difficulty?: number; character?: string }) => {
+    console.log('[Bot] Received bot:add event', { socketId: socket.id, data });
     const roomId = playerRoom.get(socket.id);
-    if (!roomId) return;
+    if (!roomId) {
+      console.log('[Bot] Player not in room', { socketId: socket.id });
+      return;
+    }
     const match = roomManager.getRoom(roomId);
-    if (!match || match.state !== 'lobby') return;
+    if (!match) {
+      console.log('[Bot] Room not found', { roomId });
+      return;
+    }
+    if (match.state !== 'lobby') {
+      console.log('[Bot] Match not in lobby state', { roomId, state: match.state });
+      return;
+    }
 
     const difficulty = (
       typeof data.difficulty === 'number' &&
@@ -274,9 +285,13 @@ io.on('connection', (socket) => {
         : 3
     ) as 1 | 2 | 3 | 4 | 5;
 
+    console.log('[Bot] Adding bot with difficulty', { roomId, difficulty });
     const bot = botManager.addBot(match, difficulty, data.character);
     if (bot) {
+      console.log('[Bot] Bot added successfully', { botId: bot.id, roomId });
       io.to(roomId).emit('room:update', match);
+    } else {
+      console.log('[Bot] Failed to add bot', { roomId });
     }
   });
 
