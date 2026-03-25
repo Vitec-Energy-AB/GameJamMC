@@ -768,7 +768,7 @@
     }
 
     if (on) {
-      if (gameMusicAudio) {
+      if (gameMusicAudio && inGame) {
         gameMusicAudio.play().catch(function(err) {
           console.warn('[audio] Failed to play GameMusic.mp3:', err);
         });
@@ -974,6 +974,11 @@
       stateBuffer = [];
       wasGrounded = {};
       if (!currentMapId && match.selectedMap) currentMapId = match.selectedMap;
+      if (musicOn && gameMusicAudio) {
+        gameMusicAudio.play().catch(function(err) {
+          console.warn('[audio] Failed to play GameMusic.mp3:', err);
+        });
+      }
       startMusic(currentMapId || 'testArena');
       updateShootBtnVisibility();
       updateRotateOverlay();
@@ -2064,11 +2069,6 @@
     document.getElementById('musicToggle').textContent = '\uD83C\uDFB5 Music: ' + (musicOn ? 'ON' : 'OFF');
 
     gameMusicAudio = document.getElementById('gameMusic');
-    if (musicOn && gameMusicAudio) {
-      gameMusicAudio.play().catch(function(err) {
-        console.warn('[audio] Auto-play blocked. User interaction required:', err);
-      });
-    }
   })();
 
   // Load sprites first
