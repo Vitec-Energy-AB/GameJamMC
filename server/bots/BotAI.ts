@@ -16,7 +16,7 @@ import {
 
 const BLAST_ZONE_MARGIN = 150; // px inside blast zone where the bot starts fleeing
 const LAVA_MARGIN = 200;       // px above lava where bot starts fleeing
-const THREAT_RADIUS = 250;     // px – consider a bomb/projectile a threat if this close
+const THREAT_RADIUS = 180;     // px – consider a bomb/projectile a threat if this close
 const RECOVERY_MARGIN = 180;   // px from blast zone edge where airborne bot triggers recovery
 
 /** Per-bot state kept across ticks (stored as a WeakMap keyed by player object). */
@@ -136,6 +136,7 @@ export function evaluate(bot: Player, match: Match, now: number): void {
   }
 
   // ── 3. DANGER: Incoming bomb or projectile? ───────────────────────────────
+  // Only dodge if highly skilled or very close threat
   let closestThreatX: number | null = null;
   let closestThreatDist = Infinity;
 
@@ -154,7 +155,9 @@ export function evaluate(bot: Player, match: Match, now: number): void {
     }
   }
 
-  if (closestThreatX !== null) {
+  // Aggressive bots prioritize attacking over dodging unless threat is very close
+  const shouldDodge = closestThreatDist < THREAT_RADIUS * (1 - config.aggressionLevel * 0.3);
+  if (closestThreatX !== null && shouldDodge) {
     if (isNewDecision) {
       state.lastBehavior = 'dodge';
       state.lastDecisionTime = now;
@@ -166,6 +169,7 @@ export function evaluate(bot: Player, match: Match, now: number): void {
   }
 
   // ── 4. ITEM: Nearby weapon / powerup? ────────────────────────────────────
+  // Aggressive bots only pick up items if no enemy is nearby or if they really need a weapon
   let closestItem: SpawnedItem | null = null;
   let closestItemDist = Infinity;
 
@@ -178,13 +182,27 @@ export function evaluate(bot: Player, match: Match, now: number): void {
     }
   }
 
-  if (closestItem && closestItemDist < 400 && !bot.currentWeapon) {
+  // Find nearest enemy to check if we should prioritize combat over items
+  let nearestEnemyDist = Infinity;
+  for (const p of match.players) {
+    if (p.id === bot.id || p.status !== 'alive') continue;
+    const d = dist(bot.position.x, bot.position.y, p.position.x, p.position.y);
+    if (d < nearestEnemyDist) nearestEnemyDist = d;
+  }
+
+  // Only pick up items if: no weapon AND (no nearby enemy OR item is very close)
+  const itemPriorityThreshold = config.aggressionLevel > 0.7 ? 250 : 400;
+  const shouldPickupItem = closestItem &&
+    !bot.currentWeapon &&
+    (nearestEnemyDist > 500 || closestItemDist < itemPriorityThreshold);
+
+  if (shouldPickupItem && closestItemDist < 400) {
     if (isNewDecision) {
       state.lastBehavior = 'item';
       state.lastDecisionTime = now;
     }
     if (state.lastBehavior === 'item') {
-      pickupItem(bot, closestItem, match, config);
+      pickupItem(bot, closestItem!, match, config);
       return;
     }
   }
@@ -229,18 +247,20 @@ export function evaluate(bot: Player, match: Match, now: number): void {
   }
 
   // ── 6. ATTACK: Enemy in range? ────────────────────────────────────────────
-  if (target && targetDist <= ATTACK_RANGE * 1.1) {
+  // Expanded attack range for more aggressive behavior
+  const effectiveAttackRange = ATTACK_RANGE * (1.1 + config.aggressionLevel * 0.3);
+  if (target && targetDist <= effectiveAttackRange) {
     if (isNewDecision) {
       state.lastBehavior = 'attack';
       state.lastDecisionTime = now;
       state.lastAttackTime = now;
     }
 
-    // Reactive blocking: skilled bots block when the target is actually attacking
+    // Reactive blocking: aggressive bots prefer attacking over blocking
     const targetIsAttacking = target.isAttacking === true;
     const blockChance = targetIsAttacking
-      ? config.blockSkill
-      : config.blockSkill * 0.25;
+      ? config.blockSkill * (1 - config.aggressionLevel * 0.3)
+      : config.blockSkill * 0.15;
 
     if (Math.random() < blockChance) {
       tryBlock(bot, target, config, now);
