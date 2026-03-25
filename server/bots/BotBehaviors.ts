@@ -72,7 +72,6 @@ export function patrol(bot: Player, match: Match, config: BotDifficultyConfig): 
  * Chase the target player.
  */
 export function chaseTarget(bot: Player, target: Player, _match: Match, config: BotDifficultyConfig): void {
-  if (Math.random() > config.aggressionLevel) return; // occasionally hesitate
   moveToward(bot, target.position.x);
 
   // Jump if the target is significantly above us and we are grounded
@@ -95,8 +94,9 @@ export function attackTarget(bot: Player, target: Player, config: BotDifficultyC
   if (bot.currentWeapon) {
     if ((bot.weaponCooldownUntil ?? 0) <= now && Math.random() < config.attackAccuracy) {
       bot.inputState.useWeapon = true;
+      return; // Weapon fired – skip melee/bomb this tick
     }
-    return;
+    // Weapon on cooldown – fall through to melee
   }
 
   // Throw bomb

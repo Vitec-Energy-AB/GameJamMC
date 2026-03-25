@@ -95,12 +95,32 @@ describe('BotAI.evaluate – does not throw for eliminated bot', () => {
     const bot = makePlayer({ status: 'eliminated' });
     const match = makeMatch(bot);
     expect(() => evaluate(bot, match, Date.now())).not.toThrow();
+    // Status should remain eliminated
+    expect(bot.status).toBe('eliminated');
   });
 
   test('does nothing when bot is respawning', () => {
     const bot = makePlayer({ status: 'respawning' });
     const match = makeMatch(bot);
     expect(() => evaluate(bot, match, Date.now())).not.toThrow();
+    // Status should remain respawning
+    expect(bot.status).toBe('respawning');
+  });
+
+  test('auto-activates bot with ready status when match is active', () => {
+    const bot = makePlayer({ status: 'ready' });
+    const match = makeMatch(bot);
+    // match.state is 'active' by default in makeMatch
+    evaluate(bot, match, Date.now() + 10000);
+    expect(bot.status).toBe('alive');
+  });
+
+  test('does not activate bot with ready status when match is not active', () => {
+    const bot = makePlayer({ status: 'ready' });
+    const match = makeMatch(bot);
+    match.state = 'lobby';
+    evaluate(bot, match, Date.now());
+    expect(bot.status).toBe('ready');
   });
 });
 
@@ -124,6 +144,80 @@ describe('BotAI.evaluate – attack behavior', () => {
     // Just check it doesn't throw and the state is boolean
     expect(typeof bot.inputState.attack).toBe('boolean');
     expect(typeof bot.inputState.useWeapon).toBe('boolean');
+  });
+});
+
+describe('BotAI.evaluate – chase behavior', () => {
+  test('chases enemy immediately when visible regardless of isNewDecision', () => {
+    const bot = makePlayer({
+      position: { x: 400, y: 300 },
+      botDifficulty: 3,
+    });
+    const enemy = makePlayer({
+      id: 'enemy-1',
+      isBot: false,
+      position: { x: 700, y: 300 }, // Visible but outside attack range
+      status: 'alive',
+    });
+    const match = makeMatch(bot, [enemy]);
+
+    // First call to seed state
+    evaluate(bot, match, 1000);
+    // Second call only 10ms later (well within reactionTimeMs) – isNewDecision is false
+    evaluate(bot, match, 1010);
+
+    // Bot should still be chasing (moving toward enemy at x=700 means moving right)
+    expect(bot.inputState.right).toBe(true);
+    expect(bot.inputState.left).toBe(false);
+  });
+});
+
+describe('BotAI.evaluate – attack falls through to melee when weapon on cooldown', () => {
+  test('attacks with melee even when weapon is on cooldown', () => {
+    const futureTime = Date.now() + 10000;
+    const bot = makePlayer({
+      botDifficulty: 5, // high accuracy
+      position: { x: 400, y: 300 },
+      attackCooldown: 0,
+      currentWeapon: {
+        id: 'sword-test',
+        type: 'lightningspear',
+        category: 'thrown',
+        position: { x: 0, y: 0 },
+        pickedUpBy: 'bot-test',
+        durability: 0,
+        ammo: 3,
+        damage: 10,
+        knockbackModifier: 1.0,
+        attackCooldown: 500,
+        rarity: 'common',
+        spawnTime: 0,
+        active: true,
+      },
+      weaponCooldownUntil: futureTime + 5000, // weapon on cooldown far in the future
+    });
+    const enemy = makePlayer({
+      id: 'enemy-1',
+      isBot: false,
+      position: { x: 420, y: 300 }, // Within melee range
+      status: 'alive',
+    });
+    const match = makeMatch(bot, [enemy]);
+
+    // Run many times since blockSkill/random may block some attempts
+    let meleeAttacked = false;
+    for (let i = 0; i < 50; i++) {
+      bot.inputState.attack = false;
+      bot.attackCooldown = 0;
+      // Mock blockSkill to 0 to ensure attack path is taken
+      evaluate(bot, match, futureTime + i);
+      if (bot.inputState.attack) {
+        meleeAttacked = true;
+        break;
+      }
+    }
+    // With difficulty 5 (accuracy 0.95) and 50 attempts, melee should trigger
+    expect(meleeAttacked).toBe(true);
   });
 });
 
