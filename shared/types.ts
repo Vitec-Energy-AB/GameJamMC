@@ -7,6 +7,7 @@ export interface InputState {
   throwBomb: boolean;
   pickup: boolean;
   useWeapon: boolean;
+  duck: boolean;
 }
 
 export interface WeaponItem {
@@ -102,6 +103,8 @@ export interface Player {
   forceFieldUntil: number;
   isAttacking?: boolean;
   attackAnimUntil?: number;
+  isDucking?: boolean;
+  duckStartTime?: number;
 }
 
 export interface Bomb {
