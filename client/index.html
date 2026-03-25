@@ -70,7 +70,7 @@
     }
     .room-selector-box {
       background: #16213e; border: 1px solid #0f3460; border-radius: 12px;
-      padding: 24px; width: 96vw; max-width: 600px;
+      padding: 24px; width: 96vw; max-width: 600px; pointer-events: auto;
     }
     .room-list { margin-top: 16px; max-height: 400px; overflow-y: auto; }
     .room-item {
@@ -223,7 +223,7 @@
     <div style="text-align: center; margin-bottom: 16px;">
       <img src="/resources/Titel.png" alt="Platform Fighter" style="max-width: 100%; height: auto; border-radius: 8px;" />
     </div>
-    <h1>Select a Room</h1>
+    <h1>Select Room or create new room</h1>
     <div class="form-row">
       <label for="playerNameInput">Your Nickname</label>
       <input type="text" id="playerNameInput" placeholder="Enter nickname..." maxlength="20" />
@@ -995,7 +995,7 @@
       emptyMsg.style.textAlign = 'center';
       emptyMsg.style.color = '#aaa';
       emptyMsg.style.padding = '20px';
-      emptyMsg.textContent = 'No rooms available. Create one to get started!';
+      emptyMsg.textContent = 'No active rooms';
       roomListContainer.appendChild(emptyMsg);
       return;
     }
