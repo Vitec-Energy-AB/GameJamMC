@@ -524,6 +524,7 @@
   var useWeaponPressed = false;
   var explosions = [];
   var lavaSplashes = [];   // splash effects when a player hits lava
+  var playersInLava = Object.create(null);  // tracks which players are currently in lava for splash dedup
   var lavaBubbles = [];    // animated bubbles on lava surface
   var lavaEmbers = [];     // ember particles floating up from lava
   var lastBubbleSpawnTime = 0;  // tracks last bubble spawn for time-based spawning
@@ -1009,6 +1010,12 @@
         if (state.platforms) currentMatch.map.platforms = state.platforms;
       }
       if (state.lavaY !== undefined) currentLavaY = state.lavaY;
+      // Clear inLava tracking for players no longer in lava (so re-entry triggers a new splash)
+      if (state.players) {
+        state.players.forEach(function(p) {
+          if (!p.inLava) delete playersInLava[p.id];
+        });
+      }
       // Detect local player landing – play a subtle thud
       if (localPlayerId && state.players) {
         var lp = state.players.find(function(p) { return p.id === localPlayerId; });
@@ -1037,6 +1044,11 @@
     });
 
     socket.on('player:lava', function(data) {
+      // Only trigger splash on first lava entry per player (not every 500ms damage tick)
+      var isFirstEntry = !playersInLava[data.playerId];
+      playersInLava[data.playerId] = true;
+      if (!isFirstEntry) return;
+
       // Splash: orange/red droplets spraying upward + ripple ring on lava surface
       var now = Date.now();
       lavaSplashes.push({
