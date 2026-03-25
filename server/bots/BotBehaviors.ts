@@ -124,8 +124,8 @@ export function chaseTarget(bot: Player, target: Player, match: Match, config: B
     }
   }
 
-  // Aggression: aggressive bots (high aggressionLevel) jump in from the air
-  const airborneChance = config.aggressionLevel * 0.15;
+  // Aggression: aggressive bots (high aggressionLevel) jump in from the air more frequently
+  const airborneChance = config.aggressionLevel * 0.25;
   if (!bot.isGrounded && bot.jumpsRemaining > 0 && Math.random() < airborneChance) {
     // Use double-jump to close the gap
     bot.inputState.jump = true;
@@ -135,6 +135,7 @@ export function chaseTarget(bot: Player, target: Player, match: Match, config: B
 /**
  * Attack target: sets attack / useWeapon / throwBomb flags based on config accuracy.
  * Includes kill-confirm bonus at high damage% and spacing after attacks.
+ * Aggressive bots attack more frequently and with higher accuracy.
  */
 export function attackTarget(bot: Player, target: Player, config: BotDifficultyConfig, now: number): void {
   const d = dist(bot.position.x, bot.position.y, target.position.x, target.position.y);
@@ -144,9 +145,11 @@ export function attackTarget(bot: Player, target: Player, config: BotDifficultyC
   bot.facing = target.position.x >= bot.position.x ? 'right' : 'left';
 
   // Kill confirm bonus: higher combo awareness = more aggressive at high damage%
+  // Aggressive bots get extra bonus
+  const aggressionBonus = config.aggressionLevel * 0.15;
   const killConfirmBonus = target.currentDamage > 100
-    ? config.comboAwareness * 0.25
-    : 0;
+    ? config.comboAwareness * 0.25 + aggressionBonus
+    : aggressionBonus * 0.5;
   const effectiveAccuracy = Math.min(1, config.attackAccuracy + killConfirmBonus);
 
   // Use weapon if available
@@ -158,13 +161,14 @@ export function attackTarget(bot: Player, target: Player, config: BotDifficultyC
     // Weapon on cooldown – fall through to melee
   }
 
-  // Throw bomb (half the kill-confirm bonus since bombs are area-denial, not precision kills)
-  if (bot.bombCooldownUntil <= now && Math.random() < config.bombUsageChance + killConfirmBonus * 0.5) {
+  // Throw bomb (aggressive bots use bombs more freely)
+  const bombBonus = config.aggressionLevel * 0.2;
+  if (bot.bombCooldownUntil <= now && Math.random() < config.bombUsageChance + killConfirmBonus * 0.5 + bombBonus) {
     bot.inputState.throwBomb = true;
     return;
   }
 
-  // Plain melee
+  // Plain melee - aggressive bots attack more often
   if ((bot.attackCooldown ?? 0) <= now && Math.random() < effectiveAccuracy) {
     bot.inputState.attack = true;
   }
