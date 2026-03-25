@@ -89,7 +89,7 @@ io.on('connection', (socket) => {
       inputState: {
         left: false, right: false, jump: false,
         attack: false, block: false, throwBomb: false,
-        pickup: false, useWeapon: false,
+        pickup: false, useWeapon: false, duck: false,
       },
       currentWeapon: null,
       weaponCooldownUntil: 0,

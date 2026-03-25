@@ -24,6 +24,7 @@ const OVERDAMAGE_HORIZONTAL_VELOCITY = 1500;
 export class GameLoop {
   private intervals: Map<string, ReturnType<typeof setInterval>> = new Map();
   private jumpPressed: Map<string, boolean> = new Map();
+  private duckStartTimes: Map<string, number> = new Map();
   private matchManager: MatchManager;
   private itemSpawnManager: ItemSpawnManager;
 
@@ -91,6 +92,30 @@ export class GameLoop {
           applyJump(player);
         }
         this.jumpPressed.set(player.id, player.inputState.jump);
+
+        // Duck handling
+        if (player.inputState.duck) {
+          player.isDucking = true;
+
+          // Track duck start time for drop-down mechanic
+          if (!this.duckStartTimes.has(player.id)) {
+            this.duckStartTimes.set(player.id, now);
+          }
+
+          const duckDuration = now - (this.duckStartTimes.get(player.id) ?? now);
+
+          // After 2 seconds of holding duck, enable drop-down through passthrough platforms
+          if (duckDuration >= 2000 && player.isGrounded) {
+            // Drop player down by moving them below their current platform
+            player.position.y += 10;
+            player.isGrounded = false;
+            player.isDucking = false;
+            this.duckStartTimes.delete(player.id);
+          }
+        } else {
+          player.isDucking = false;
+          this.duckStartTimes.delete(player.id);
+        }
 
         // Block handling
         if (player.inputState.block) {

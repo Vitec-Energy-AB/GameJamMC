@@ -154,7 +154,7 @@
     <div id="playerList"></div>
 
     <div id="controls">
-      Move: &larr; &rarr; (or A D) &nbsp;|&nbsp; Jump: &uarr; / W / Space &nbsp;|&nbsp; Attack: Z &nbsp;|&nbsp; Block: C &nbsp;|&nbsp; Throw Bomb: B &nbsp;|&nbsp; Pickup Item: E &nbsp;|&nbsp; Use Weapon: Q / X &nbsp;|&nbsp; Music: M
+      Move: &larr; &rarr; (or A D) &nbsp;|&nbsp; Jump: &uarr; / W / Space &nbsp;|&nbsp; Duck: &darr; / S (hold 2s to drop) &nbsp;|&nbsp; Attack: Z &nbsp;|&nbsp; Block: C &nbsp;|&nbsp; Throw Bomb: B &nbsp;|&nbsp; Pickup Item: E &nbsp;|&nbsp; Use Weapon: Q / X &nbsp;|&nbsp; Music: M
     </div>
   </div>
 </div>
@@ -187,6 +187,7 @@
     'PlayerShield': '/sprites/PlayerShield.png',
     'PlayerThrowBomb': '/sprites/PlayerThrowBomb.png',
     'PlayerHit': '/sprites/PlayerHit.png',
+    'Player_duck': '/sprites/Player_duck.png',
     // Effects
     'Jump_Effect': '/sprites/Jump_Effect.png',
     'Landing_Dust': '/sprites/Landing_Dust.png',
@@ -252,7 +253,7 @@
   var inGame = false;
   var stateBuffer = [];
   var currentLavaY = null;
-  var localInput = { left: false, right: false, jump: false, attack: false, block: false, throwBomb: false, pickup: false, useWeapon: false };
+  var localInput = { left: false, right: false, jump: false, attack: false, block: false, throwBomb: false, pickup: false, useWeapon: false, duck: false };
   var lastInputSent = {};
   var attackPressed = false;
   var bombPressed = false;
@@ -477,6 +478,7 @@
       case 'ArrowLeft': case 'KeyA': localInput.left = true; break;
       case 'ArrowRight': case 'KeyD': localInput.right = true; break;
       case 'ArrowUp': case 'KeyW': case 'Space': localInput.jump = true; e.preventDefault(); break;
+      case 'ArrowDown': case 'KeyS': localInput.duck = true; break;
       case 'KeyZ': localInput.attack = true; break;
       case 'KeyC': localInput.block = true; break;
       case 'KeyB': localInput.throwBomb = true; break;
@@ -490,6 +492,7 @@
       case 'ArrowLeft': case 'KeyA': localInput.left = false; break;
       case 'ArrowRight': case 'KeyD': localInput.right = false; break;
       case 'ArrowUp': case 'KeyW': case 'Space': localInput.jump = false; break;
+      case 'ArrowDown': case 'KeyS': localInput.duck = false; break;
       case 'KeyZ': localInput.attack = false; break;
       case 'KeyC': localInput.block = false; break;
       case 'KeyB': localInput.throwBomb = false; break;
@@ -1107,7 +1110,9 @@
       // Determine which sprite to use based on player state
       var playerSprite = null;
       if (spritesLoaded) {
-        if (p.isBlocking && sprites['PlayerShield'] && sprites['PlayerShield'].complete) {
+        if (p.isDucking && sprites['Player_duck'] && sprites['Player_duck'].complete) {
+          playerSprite = sprites['Player_duck'];
+        } else if (p.isBlocking && sprites['PlayerShield'] && sprites['PlayerShield'].complete) {
           playerSprite = sprites['PlayerShield'];
         } else if (p.isAttacking && sprites['PlayerAttack'] && sprites['PlayerAttack'].complete) {
           playerSprite = sprites['PlayerAttack'];
