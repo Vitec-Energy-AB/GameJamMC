@@ -239,8 +239,8 @@
           <option value="4">★★★★☆ Hard</option>
           <option value="5">★★★★★ Master</option>
         </select>
-        <button id="addBotBtn" style="background:#3498db; color:#fff; padding:8px 16px; cursor:pointer;">+ Add Bot</button>
-        <button id="removeBotsBtn" style="background:#c0392b; color:#fff; padding:8px 16px; cursor:pointer;">✕ Remove All Bots</button>
+        <button id="addBotBtn" style="background:#3498db; color:#fff; padding:8px 16px; cursor:pointer; pointer-events:auto;">+ Add Bot</button>
+        <button id="removeBotsBtn" style="background:#c0392b; color:#fff; padding:8px 16px; cursor:pointer; pointer-events:auto;">✕ Remove All Bots</button>
       </div>
     </div>
 
@@ -1116,7 +1116,19 @@
         }
         var difficulty = parseInt(botDifficultySelect.value, 10) || 3;
         console.log('[Bot] Emitting bot:add event', { difficulty: difficulty });
+
+        // Provide visual feedback
+        var originalText = addBotBtn.textContent;
+        addBotBtn.disabled = true;
+        addBotBtn.textContent = '⏳ Adding...';
+
         socket.emit('bot:add', { difficulty: difficulty });
+
+        // Re-enable after a short delay
+        setTimeout(function() {
+          addBotBtn.disabled = false;
+          addBotBtn.textContent = originalText;
+        }, 500);
       });
       console.log('[Bot] Add bot button listener attached successfully');
     } else {
