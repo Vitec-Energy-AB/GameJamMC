@@ -7,7 +7,7 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #111; color: #eee; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
-    #gameCanvas { display: block; background: #1a1a2e; touch-action: none; user-select: none; }
+    #gameCanvas { display: block; background: #1a1a2e; touch-action: none; user-select: none; width: 100vw; height: 100vh; }
     /* ── Mobile touch controls ──────────────────────────────────────────────── */
     #shootBtn {
       position: fixed;
@@ -31,14 +31,23 @@
       -webkit-tap-highlight-color: transparent;
       box-shadow: 0 4px 16px rgba(0,0,0,0.5);
       display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
     }
     #shootBtn.active {
       background: rgba(233, 69, 96, 1);
       transform: scale(0.93);
     }
-    @media (pointer: coarse) {
-      #shootBtn { display: flex; align-items: center; justify-content: center; flex-direction: column; }
+    /* rotateOverlay: shown when portrait+touch+inGame */
+    #rotateOverlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.95); z-index: 100; display: none;
+      align-items: center; justify-content: center; flex-direction: column;
+      color: #fff; font-size: 1.5rem; text-align: center; padding: 20px;
     }
+    #rotateOverlay .rotate-icon { font-size: 4rem; margin-bottom: 16px; animation: spin90 1.5s ease-in-out infinite alternate; }
+    @keyframes spin90 { from { transform: rotate(0deg); } to { transform: rotate(90deg); } }
     #lobbyOverlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0,0,0,0.85); display: flex; flex-direction: column;
@@ -51,7 +60,7 @@
     }
     .lobby-box {
       background: #16213e; border: 1px solid #0f3460; border-radius: 12px;
-      padding: 32px 40px; min-width: 420px; max-width: 520px;
+      padding: 16px 14px; width: 92vw; max-width: 520px;
     }
     h1 { font-size: 2rem; color: #e94560; margin-bottom: 8px; text-align: center; }
     h2 { font-size: 1.3rem; color: #ccc; margin-bottom: 20px; text-align: center; }
@@ -139,13 +148,32 @@
     #lobbyLeaderboardStatus { color: #888; font-size: 0.75rem; text-align: center; margin-top: 4px; min-height: 14px; }
     /* ── Nickname hint ────────────────────────────────────────────────────── */
     #nameHint { font-size: 0.78rem; color: #888; margin-top: 3px; min-height: 16px; }
+    /* ── Responsive / Mobile-first ───────────────────────────────────────── */
+    @media (min-width: 480px) {
+      .lobby-box { padding: 32px 40px; }
+    }
+    @media (max-width: 600px) {
+      #controls { display: none; }
+      #lobbyOverlay { overflow-y: auto; }
+    }
+    @media (max-width: 400px) {
+      .char-cards { gap: 4px; }
+      .char-card { min-width: 42%; flex: 0 0 46%; }
+      .map-cards { flex-direction: column; }
+      .map-card { min-width: unset; }
+      h1 { font-size: 1.4rem; }
+      h2 { font-size: 1rem; }
+      #countdown { font-size: 3rem; }
+      #gameOverTitle { font-size: 2.5rem; }
+      #winnerName { font-size: 1.3rem; }
+    }
   </style>
 </head>
 <body>
 
 <button id="musicToggle">&#x1F3B5; Music: OFF</button>
 
-<canvas id="gameCanvas" width="1200" height="700"></canvas>
+<canvas id="gameCanvas"></canvas>
 
 <button id="shootBtn" aria-label="Shoot">&#x2694;&#xFE0F;<br>SHOOT</button>
 
@@ -251,6 +279,11 @@
     <div id="leaderboardStatus">Loading leaderboard...</div>
   </div>
   <button id="playAgainBtn" onclick="location.reload()">Play Again</button>
+</div>
+
+<div id="rotateOverlay">
+  <div class="rotate-icon">🔄</div>
+  <div>Rotera telefonen för att spela</div>
 </div>
 
 <script src="/socket.io/socket.io.min.js"></script>
@@ -465,6 +498,16 @@
   var selectedCharacter = 'bjork';
   var wasGrounded = {};
   var cameraY = 0;
+  var cameraX = 0;
+  var cameraZoom = 1.0;
+  var targetZoom = 1.0;
+  var viewScale = 1.0;
+  // Joystick state
+  var joystickVisible = false;
+  var joystickX = 0;
+  var joystickY = 0;
+  var joystickDx = 0;
+  var joystickDy = 0;
 
   // ── DOM Refs ────────────────────────────────────────────────────────────────
   var canvas = document.getElementById('gameCanvas');
@@ -485,6 +528,48 @@
   var selectedMapLabel = document.getElementById('selectedMapLabel');
 
   roomLabel.textContent = 'Room: ' + roomId;
+
+  // ── Canvas Resize / Responsive ───────────────────────────────────────────────
+  function resizeCanvas() {
+    var dpr = window.devicePixelRatio || 1;
+    var w = window.innerWidth;
+    var h = window.innerHeight;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    viewScale = Math.min(w / CANVAS_W, h / CANVAS_H);
+  }
+
+  // ── Rotate overlay (portrait + touch + inGame) ──────────────────────────────
+  var rotateOverlay = document.getElementById('rotateOverlay');
+  function updateRotateOverlay() {
+    if (!rotateOverlay) return;
+    var isPortrait = window.innerHeight > window.innerWidth;
+    var isTouch = window.matchMedia('(pointer: coarse)').matches;
+    rotateOverlay.style.display = (inGame && isPortrait && isTouch) ? 'flex' : 'none';
+  }
+
+  // ── Shoot button visibility ──────────────────────────────────────────────────
+  function updateShootBtnVisibility() {
+    var isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
+    var btn = document.getElementById('shootBtn');
+    if (btn) btn.style.display = (isTouchDevice && inGame) ? 'flex' : 'none';
+  }
+
+  // Attach resize/orientation listeners
+  window.addEventListener('resize', function() {
+    resizeCanvas();
+    updateRotateOverlay();
+  });
+  window.addEventListener('orientationchange', function() {
+    resizeCanvas();
+    updateRotateOverlay();
+  });
+
+  // Initial resize
+  resizeCanvas();
+  updateShootBtnVisibility();
 
   // ── Audio ────────────────────────────────────────────────────────────────────
   var audioCtx = null;
@@ -736,19 +821,31 @@
       swipePointerId = e.pointerId;
       swipeStartX = e.clientX;
       swipeStartY = e.clientY;
+      joystickVisible = true;
+      joystickX = e.clientX;
+      joystickY = e.clientY;
+      joystickDx = 0;
+      joystickDy = 0;
       try { canvas.setPointerCapture(e.pointerId); } catch(_) {}
       e.preventDefault();
     }, { passive: false });
 
     canvas.addEventListener('pointermove', function(e) {
       if (e.pointerId !== swipePointerId) return;
-      applySwipe(e.clientX - swipeStartX, e.clientY - swipeStartY);
+      var dx = e.clientX - swipeStartX;
+      var dy = e.clientY - swipeStartY;
+      joystickDx = e.clientX - joystickX;
+      joystickDy = e.clientY - joystickY;
+      applySwipe(dx, dy);
       e.preventDefault();
     }, { passive: false });
 
     function endSwipe(e) {
       if (e.pointerId !== swipePointerId) return;
       swipePointerId = null;
+      joystickVisible = false;
+      joystickDx = 0;
+      joystickDy = 0;
       clearSwipeActions();
     }
 
@@ -833,6 +930,9 @@
       wasGrounded = {};
       if (!currentMapId && match.selectedMap) currentMapId = match.selectedMap;
       startMusic(currentMapId || 'testArena');
+      updateShootBtnVisibility();
+      updateRotateOverlay();
+      try { screen.orientation.lock('landscape'); } catch(_) {}
     });
 
     socket.on('state:update', function(state) {
@@ -885,6 +985,8 @@
     socket.on('match:end', function(data) {
       inGame = false;
       stopMusic();
+      updateShootBtnVisibility();
+      updateRotateOverlay();
       if (data.winnerId === localPlayerId) sounds.win();
       gameOverScreen.style.display = 'flex';
       var winnerNameEl = document.getElementById('winnerName');
@@ -1050,8 +1152,13 @@
 
   // ── Renderer ─────────────────────────────────────────────────────────────────
   function drawBackground() {
+    var dpr = window.devicePixelRatio || 1;
+    var screenW = canvas.width / dpr;
+    var screenH = canvas.height / dpr;
+    ctx.save();
+    ctx.scale(dpr, dpr);
     ctx.fillStyle = '#1a1a2e';
-    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    ctx.fillRect(0, 0, screenW, screenH);
 
     // Draw background sprite if available and we have a map selected
     if (spritesLoaded && currentMapId) {
@@ -1066,7 +1173,7 @@
 
       if (bgSprite && bgSprite.complete) {
         ctx.globalAlpha = 0.6;
-        ctx.drawImage(bgSprite, 0, 0, CANVAS_W, CANVAS_H);
+        ctx.drawImage(bgSprite, 0, 0, screenW, screenH);
         ctx.globalAlpha = 1.0;
       }
     }
@@ -1074,10 +1181,11 @@
     // Stars overlay
     ctx.fillStyle = 'rgba(255,255,255,0.3)';
     for (var i = 0; i < 80; i++) {
-      var sx = (i * 137.5 + 50) % CANVAS_W;
-      var sy = (i * 97.3 + 30) % CANVAS_H;
+      var sx = (i * 137.5 + 50) % screenW;
+      var sy = (i * 97.3 + 30) % screenH;
       ctx.fillRect(sx, sy, 1, 1);
     }
+    ctx.restore();
   }
 
   function drawPlatforms(platforms) {
@@ -1613,13 +1721,18 @@
     var players = state ? state.players : (currentMatch.players || []);
     var mode = currentMatch.mode || 'stock';
     var now = Date.now();
+    var dpr = window.devicePixelRatio || 1;
+    var screenW = canvas.width / dpr;
 
     ctx.save();
+    ctx.scale(dpr, dpr);
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.fillRect(0, 0, CANVAS_W, 54);
+    ctx.fillRect(0, 0, screenW, 54);
     ctx.restore();
 
     var xi = 20;
+    ctx.save();
+    ctx.scale(dpr, dpr);
     for (var i = 0; i < players.length; i++) {
       var p = players[i];
       if (p.status === 'eliminated') continue;
@@ -1655,14 +1768,19 @@
       }
       xi += 140;
     }
+    ctx.restore();
   }
 
   function drawBlastZoneIndicators() {
+    var dpr = window.devicePixelRatio || 1;
+    var screenW = canvas.width / dpr;
+    var screenH = canvas.height / dpr;
     ctx.save();
+    ctx.scale(dpr, dpr);
     ctx.strokeStyle = 'rgba(255,50,50,0.3)';
     ctx.lineWidth = 2;
     ctx.setLineDash([8, 6]);
-    ctx.strokeRect(2, 2, CANVAS_W - 4, CANVAS_H - 4);
+    ctx.strokeRect(2, 2, screenW - 4, screenH - 4);
     ctx.setLineDash([]);
     ctx.restore();
   }
@@ -1674,8 +1792,12 @@
 
     if (!inGame) {
       drawBackground();
+      var _dpr = window.devicePixelRatio || 1;
+      ctx.save();
+      ctx.scale(_dpr, _dpr);
       ctx.fillStyle = 'rgba(0,0,0,0.6)';
-      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.fillRect(0, 0, canvas.width / _dpr, canvas.height / _dpr);
+      ctx.restore();
       return;
     }
 
@@ -1717,19 +1839,38 @@
 
     var state = getInterpolatedState();
 
-    // Update camera to follow local player upward
+    // ── Camera: follow local player with X+Y + dynamic zoom ─────────────────
+    var dpr = window.devicePixelRatio || 1;
+    var screenW = canvas.width / dpr;
+    var screenH = canvas.height / dpr;
+
     if (state && localPlayerId) {
       var lp = state.players.find(function(p) { return p.id === localPlayerId; });
       if (lp) {
-        var targetCameraY = lp.position.y - CANVAS_H * 0.6;
-        if (targetCameraY > 0) targetCameraY = 0;
-        // No minimum clamp - camera follows player to any height
-        var cameraDiff = Math.abs(targetCameraY - cameraY);
-        if (cameraDiff > 500) {
-          cameraY = targetCameraY; // Snap instantly for large jumps
+        var targetCameraX = lp.position.x + PLAYER_W / 2;
+        var targetCameraY = lp.position.y + PLAYER_H / 2;
+        cameraX += (targetCameraX - cameraX) * 0.12;
+        cameraY += (targetCameraY - cameraY) * 0.12;
+
+        // Dynamic zoom based on alive players and distance to nearest opponent
+        var alivePlayers = state.players.filter(function(p) { return p.status !== 'eliminated'; });
+        if (alivePlayers.length <= 1) {
+          targetZoom = 1.5;
         } else {
-          cameraY = cameraY + (targetCameraY - cameraY) * 0.15;
+          var minDist = Infinity;
+          for (var pi = 0; pi < alivePlayers.length; pi++) {
+            var op = alivePlayers[pi];
+            if (op.id === localPlayerId) continue;
+            var dx = op.position.x - lp.position.x;
+            var dy = op.position.y - lp.position.y;
+            var dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < minDist) minDist = dist;
+          }
+          // Map distance 0-900 → zoom 1.4-0.6
+          targetZoom = 1.4 - (Math.min(minDist, 900) / 900) * 0.8;
         }
+        targetZoom = Math.max(0.6, Math.min(1.8, targetZoom));
+        cameraZoom += (targetZoom - cameraZoom) * 0.05;
       }
     }
 
@@ -1737,7 +1878,10 @@
 
     // Apply camera transform for all world-space objects
     ctx.save();
-    ctx.translate(0, -cameraY);
+    ctx.scale(dpr, dpr);
+    ctx.translate(screenW / 2, screenH / 2);
+    ctx.scale(cameraZoom * viewScale, cameraZoom * viewScale);
+    ctx.translate(-cameraX, -cameraY);
 
     if (currentMatch) {
       drawPlatforms(currentMatch.map.platforms);
@@ -1748,19 +1892,19 @@
 
     // Draw rising lava (world-space)
     if (currentLavaY !== null) {
-      var worldBottom = CANVAS_H - cameraY;
+      var worldBottom = CANVAS_H + 200;
       var lavaGradient = ctx.createLinearGradient(0, currentLavaY, 0, worldBottom);
       lavaGradient.addColorStop(0, 'rgba(255, 80, 0, 0.9)');
       lavaGradient.addColorStop(0.3, 'rgba(255, 40, 0, 0.85)');
       lavaGradient.addColorStop(1, 'rgba(180, 0, 0, 0.8)');
       ctx.fillStyle = lavaGradient;
-      ctx.fillRect(0, currentLavaY, CANVAS_W, worldBottom - currentLavaY);
+      ctx.fillRect(-CANVAS_W, currentLavaY, CANVAS_W * 3, worldBottom - currentLavaY);
 
       ctx.strokeStyle = 'rgba(255, 200, 50, ' + (0.6 + Math.sin(now / 200) * 0.3) + ')';
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.moveTo(0, currentLavaY);
-      for (var lx = 0; lx < CANVAS_W; lx += 20) {
+      ctx.moveTo(-CANVAS_W, currentLavaY);
+      for (var lx = -CANVAS_W; lx < CANVAS_W * 2; lx += 20) {
         ctx.lineTo(lx, currentLavaY + Math.sin((lx + now / 100) * 0.05) * 4);
       }
       ctx.stroke();
@@ -1780,18 +1924,44 @@
     // Restore transform – HUD elements are drawn in screen-space
     ctx.restore();
 
-    // Lava warning shown in screen-space when lava is close to the visible area
-    if (currentLavaY !== null && currentLavaY - cameraY < CANVAS_H * 0.7) {
-      ctx.save();
-      ctx.font = 'bold 16px "Segoe UI", sans-serif';
-      ctx.fillStyle = 'rgba(255, 100, 0, ' + (0.5 + Math.sin(now / 300) * 0.4) + ')';
-      ctx.textAlign = 'center';
-      ctx.fillText('\u26A0 LAVA RISING! \u26A0', CANVAS_W / 2, 30);
-      ctx.restore();
+    // Lava warning shown in screen-space when lava is close to the camera
+    if (currentLavaY !== null) {
+      var lavaScreenY = (currentLavaY - cameraY) * cameraZoom * viewScale + screenH / 2;
+      if (lavaScreenY < screenH * 0.85) {
+        ctx.save();
+        ctx.scale(dpr, dpr);
+        ctx.font = 'bold 16px "Segoe UI", sans-serif';
+        ctx.fillStyle = 'rgba(255, 100, 0, ' + (0.5 + Math.sin(now / 300) * 0.4) + ')';
+        ctx.textAlign = 'center';
+        ctx.fillText('\u26A0 LAVA RISING! \u26A0', screenW / 2, 75);
+        ctx.restore();
+      }
     }
 
     drawBlastZoneIndicators();
     drawHUD(state);
+
+    // Draw virtual joystick in screen-space
+    if (joystickVisible && inGame) {
+      ctx.save();
+      ctx.scale(dpr, dpr);
+      // Outer circle (base)
+      ctx.globalAlpha = 0.3;
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(joystickX, joystickY, 60, 0, Math.PI * 2);
+      ctx.stroke();
+      // Inner circle (thumb)
+      ctx.globalAlpha = 0.5;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      var jThumbX = joystickX + Math.max(-50, Math.min(50, joystickDx));
+      var jThumbY = joystickY + Math.max(-50, Math.min(50, joystickDy));
+      ctx.arc(jThumbX, jThumbY, 20, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
   }
 
   // ── Init ────────────────────────────────────────────────────────────────────
