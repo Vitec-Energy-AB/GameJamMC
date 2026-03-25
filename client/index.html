@@ -1100,8 +1100,61 @@
         currentMatch.items = currentMatch.items.filter(function(i) { return i.id !== data.itemId; });
       }
     });
+  }
 
-    // Bot management button event listeners
+  // ── Lobby UI ─────────────────────────────────────────────────────────────────
+  function renderMapCards() {
+    if (!mapCardsDiv) return;
+    mapCardsDiv.innerHTML = '';
+    availableMaps.forEach(function(m) {
+      var card = document.createElement('div');
+      card.className = 'map-card' + (myMapVote === m.id ? ' selected' : '');
+      card.dataset.mapId = m.id;
+      card.innerHTML =
+        '<div class="map-name">' + escHtml(m.name) + '</div>' +
+        '<div class="map-desc">' + escHtml(m.description) + '</div>' +
+        '<div class="map-votes" id="votes_' + m.id + '">0 röster</div>';
+      card.addEventListener('click', function() {
+        myMapVote = m.id;
+        document.querySelectorAll('.map-card').forEach(function(c) { c.classList.remove('selected'); });
+        card.classList.add('selected');
+        socket.emit('map:vote', { mapId: m.id });
+      });
+      mapCardsDiv.appendChild(card);
+    });
+  }
+
+  function updateMapVoteDisplay(votes) {
+    var tally = {};
+    Object.values(votes).forEach(function(v) { tally[v] = (tally[v] || 0) + 1; });
+    availableMaps.forEach(function(m) {
+      var el = document.getElementById('votes_' + m.id);
+      if (el) el.textContent = (tally[m.id] || 0) + ' röster';
+    });
+  }
+
+  var joinBtnLocked = false;
+  document.getElementById('joinBtn').addEventListener('click', function() {
+    if (joinBtnLocked) return;
+    var normalized = normalizeUsername(nicknameInput.value);
+    var name = normalized.displayName;
+    saveProfile(name, musicOn);
+    var mode = modeSelect.value;
+    joinBtnLocked = true;
+    document.getElementById('joinBtn').disabled = true;
+    socket.emit('room:join', { roomId: roomId, name: name, mode: mode, character: selectedCharacter });
+    // Re-enable after brief delay in case of reconnect
+    setTimeout(function() { joinBtnLocked = false; document.getElementById('joinBtn').disabled = false; }, 3000);
+  });
+
+  readyBtn.addEventListener('click', function() {
+    socket.emit('player:ready');
+    readyBtn.disabled = true;
+    readyBtn.textContent = '\u231B Waiting...';
+  });
+
+  // Bot management button event listeners
+  (function setupBotButtons() {
     try {
       var addBotBtn = document.getElementById('addBotBtn');
       var removeBotsBtn = document.getElementById('removeBotsBtn');
@@ -1162,58 +1215,7 @@
     } catch (error) {
       console.error('[Bot] Error setting up bot button listeners:', error);
     }
-  }
-
-  // ── Lobby UI ─────────────────────────────────────────────────────────────────
-  function renderMapCards() {
-    if (!mapCardsDiv) return;
-    mapCardsDiv.innerHTML = '';
-    availableMaps.forEach(function(m) {
-      var card = document.createElement('div');
-      card.className = 'map-card' + (myMapVote === m.id ? ' selected' : '');
-      card.dataset.mapId = m.id;
-      card.innerHTML =
-        '<div class="map-name">' + escHtml(m.name) + '</div>' +
-        '<div class="map-desc">' + escHtml(m.description) + '</div>' +
-        '<div class="map-votes" id="votes_' + m.id + '">0 röster</div>';
-      card.addEventListener('click', function() {
-        myMapVote = m.id;
-        document.querySelectorAll('.map-card').forEach(function(c) { c.classList.remove('selected'); });
-        card.classList.add('selected');
-        socket.emit('map:vote', { mapId: m.id });
-      });
-      mapCardsDiv.appendChild(card);
-    });
-  }
-
-  function updateMapVoteDisplay(votes) {
-    var tally = {};
-    Object.values(votes).forEach(function(v) { tally[v] = (tally[v] || 0) + 1; });
-    availableMaps.forEach(function(m) {
-      var el = document.getElementById('votes_' + m.id);
-      if (el) el.textContent = (tally[m.id] || 0) + ' röster';
-    });
-  }
-
-  var joinBtnLocked = false;
-  document.getElementById('joinBtn').addEventListener('click', function() {
-    if (joinBtnLocked) return;
-    var normalized = normalizeUsername(nicknameInput.value);
-    var name = normalized.displayName;
-    saveProfile(name, musicOn);
-    var mode = modeSelect.value;
-    joinBtnLocked = true;
-    document.getElementById('joinBtn').disabled = true;
-    socket.emit('room:join', { roomId: roomId, name: name, mode: mode, character: selectedCharacter });
-    // Re-enable after brief delay in case of reconnect
-    setTimeout(function() { joinBtnLocked = false; document.getElementById('joinBtn').disabled = false; }, 3000);
-  });
-
-  readyBtn.addEventListener('click', function() {
-    socket.emit('player:ready');
-    readyBtn.disabled = true;
-    readyBtn.textContent = '\u231B Waiting...';
-  });
+  })();
 
   function escHtml(str) {
     return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
