@@ -171,6 +171,12 @@ export interface Match {
   mapVotes: { [playerId: string]: string };
   selectedMap: string;
   lavaState: LavaState;
+  /** Socket ID of the player who created the room */
+  hostId?: string;
+  /** Display name for the room (e.g., "Rum #3") */
+  displayName?: string;
+  /** Timestamp when the room was created */
+  createdAt?: number;
 }
 
 export interface HitResult {
@@ -178,4 +184,16 @@ export interface HitResult {
   damage: number;
   knockback: { x: number; y: number };
   blocked: boolean;
+}
+
+export interface RoomInfo {
+  roomId: string;
+  name: string;
+  state: 'lobby' | 'countdown' | 'active' | 'ended';
+  playerCount: number;
+  maxPlayers: number;
+  hostName: string;
+  selectedMap: string;
+  canJoin: boolean;
+  createdAt: number;
 }
