@@ -175,6 +175,8 @@
 
 <canvas id="gameCanvas"></canvas>
 
+<audio id="gameMusic" src="/resources/GameMusic.mp3" loop preload="auto"></audio>
+
 <button id="shootBtn" aria-label="Shoot">&#x2694;&#xFE0F;<br>SHOOT</button>
 
 <div id="lobbyOverlay">
@@ -296,26 +298,33 @@
 
   // ── Profile Store (localStorage) ────────────────────────────────────────────
   var PROFILE_KEY = 'gamejammc_profile';
-  var PROFILE_VERSION = 1;
+  var PROFILE_VERSION = 2;
   var DEFAULT_SUGGESTION = 'GitMangoCoder';
 
   function loadProfile() {
     try {
       var raw = localStorage.getItem(PROFILE_KEY);
-      if (!raw) return { version: PROFILE_VERSION, lastUsername: null };
+      if (!raw) return { version: PROFILE_VERSION, lastUsername: null, musicEnabled: true };
       var parsed = JSON.parse(raw);
-      if (!parsed || parsed.version !== PROFILE_VERSION) return { version: PROFILE_VERSION, lastUsername: null };
-      if (typeof parsed.lastUsername !== 'string' && parsed.lastUsername !== null) return { version: PROFILE_VERSION, lastUsername: null };
+      if (!parsed || parsed.version !== PROFILE_VERSION) return { version: PROFILE_VERSION, lastUsername: null, musicEnabled: true };
+      if (typeof parsed.lastUsername !== 'string' && parsed.lastUsername !== null) return { version: PROFILE_VERSION, lastUsername: null, musicEnabled: true };
+      if (typeof parsed.musicEnabled !== 'boolean') {
+        parsed.musicEnabled = true;
+      }
       return parsed;
     } catch (e) {
       console.warn('[profile] Failed to load profile:', e);
-      return { version: PROFILE_VERSION, lastUsername: null };
+      return { version: PROFILE_VERSION, lastUsername: null, musicEnabled: true };
     }
   }
 
-  function saveProfile(lastUsername) {
+  function saveProfile(lastUsername, musicEnabled) {
     try {
-      localStorage.setItem(PROFILE_KEY, JSON.stringify({ version: PROFILE_VERSION, lastUsername: lastUsername }));
+      localStorage.setItem(PROFILE_KEY, JSON.stringify({
+        version: PROFILE_VERSION,
+        lastUsername: lastUsername,
+        musicEnabled: typeof musicEnabled === 'boolean' ? musicEnabled : musicOn
+      }));
     } catch (e) {
       console.warn('[profile] Failed to save profile:', e);
     }
@@ -573,9 +582,10 @@
 
   // ── Audio ────────────────────────────────────────────────────────────────────
   var audioCtx = null;
-  var musicOn = false;
+  var musicOn = true;
   var musicNodes = null;
   var currentMapId = null;
+  var gameMusicAudio = null;
 
   function getAudioCtx() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -737,11 +747,29 @@
   function setMusicOn(on) {
     musicOn = on;
     document.getElementById('musicToggle').textContent = '\uD83C\uDFB5 Music: ' + (on ? 'ON' : 'OFF');
-    if (on && inGame) {
-      startMusic(currentMapId);
+
+    if (!gameMusicAudio) {
+      gameMusicAudio = document.getElementById('gameMusic');
+    }
+
+    if (on) {
+      if (gameMusicAudio) {
+        gameMusicAudio.play().catch(function(err) {
+          console.warn('[audio] Failed to play GameMusic.mp3:', err);
+        });
+      }
+      if (inGame) {
+        startMusic(currentMapId);
+      }
     } else {
+      if (gameMusicAudio) {
+        gameMusicAudio.pause();
+      }
       stopMusic();
     }
+
+    var profile = loadProfile();
+    saveProfile(profile.lastUsername, on);
   }
 
   document.getElementById('musicToggle').addEventListener('click', function() {
@@ -1087,7 +1115,7 @@
     if (joinBtnLocked) return;
     var normalized = normalizeUsername(nicknameInput.value);
     var name = normalized.displayName;
-    saveProfile(name);
+    saveProfile(name, musicOn);
     var mode = modeSelect.value;
     joinBtnLocked = true;
     document.getElementById('joinBtn').disabled = true;
@@ -1975,6 +2003,16 @@
       hintEl.textContent = profile.lastUsername
         ? 'Last used: ' + profile.lastUsername
         : 'Suggested: ' + DEFAULT_SUGGESTION;
+    }
+
+    musicOn = profile.musicEnabled;
+    document.getElementById('musicToggle').textContent = '\uD83C\uDFB5 Music: ' + (musicOn ? 'ON' : 'OFF');
+
+    gameMusicAudio = document.getElementById('gameMusic');
+    if (musicOn && gameMusicAudio) {
+      gameMusicAudio.play().catch(function(err) {
+        console.warn('[audio] Auto-play blocked. User interaction required:', err);
+      });
     }
   })();
 
