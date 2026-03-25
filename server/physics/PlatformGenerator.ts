@@ -2,10 +2,10 @@ import { Match, Platform } from '../../shared/types';
 import { Server } from 'socket.io';
 
 const VERTICAL_GAP_MIN = 100;
-const VERTICAL_GAP_MAX = 160;
-const PLATFORMS_PER_ROW_MIN = 1;
+const VERTICAL_GAP_MAX = 130;
+const PLATFORMS_PER_ROW_MIN = 2;
 const PLATFORMS_PER_ROW_MAX = 2;
-const PLATFORM_WIDTH_MIN = 60;
+const PLATFORM_WIDTH_MIN = 90;
 const PLATFORM_WIDTH_MAX = 150;
 const PLATFORM_HEIGHT = 15;
 const GENERATION_AHEAD = 300; // Generate platforms 300px above lava
@@ -91,7 +91,7 @@ export function updatePlatformGeneration(match: Match, io: Server, highestPlayer
       }
     }
 
-    if (state.rowCount % 2 === 0 && newPlatforms.length > 0) {
+    if (newPlatforms.length > 0) {
       const sp = newPlatforms[Math.floor(Math.random() * newPlatforms.length)];
       match.map.spawnPoints.push({
         x: sp.x + sp.width / 2,
@@ -99,7 +99,7 @@ export function updatePlatformGeneration(match: Match, io: Server, highestPlayer
       });
       if (lava && lava.active) {
         match.map.spawnPoints = match.map.spawnPoints.filter(
-          s => s.y < lava.currentY - 50
+          s => s.y < lava.currentY - 150
         );
       }
     }
