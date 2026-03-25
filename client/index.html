@@ -4,6 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Platform Fighter</title>
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#1a1a2e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Platform Fighter" />
+  <link rel="apple-touch-icon" href="/resources/Titel.png" />
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #111; color: #eee; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
@@ -2131,6 +2137,15 @@
     if (e.key === 'Enter') document.getElementById('joinBtn').click();
   });
 })();
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').then(function(reg) {
+      console.log('[SW] registered, scope:', reg.scope);
+    }).catch(function(err) {
+      console.warn('[SW] registration failed:', err);
+    });
+  }
 </script>
 </body>
 </html>
