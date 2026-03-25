@@ -95,6 +95,14 @@
       position: relative; z-index: 10;
       padding: 10px 24px; border: none; border-radius: 6px;
       font-size: 1rem; font-weight: bold;
+      transition: transform 0.1s, background 0.2s;
+    }
+    #createRoomBtn:hover {
+      background: #2ecc71;
+    }
+    #createRoomBtn:active {
+      transform: scale(0.98);
+      background: #229954;
     }
     #gameOverScreen {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -240,6 +248,7 @@
     </div>
     <div class="room-list" id="roomList"></div>
     <button id="createRoomBtn">Create New Room</button>
+    <div id="createRoomDebug" style="margin-top: 12px; padding: 8px; background: #0f3460; border: 1px solid #27ae60; border-radius: 4px; font-size: 0.85rem; color: #aaa; display: none;"></div>
   </div>
 </div>
 
@@ -994,6 +1003,19 @@
   var createRoomBtn = document.getElementById('createRoomBtn');
   var playerNameInput = document.getElementById('playerNameInput');
   var nameHintRoom = document.getElementById('nameHintRoom');
+  var createRoomDebug = document.getElementById('createRoomDebug');
+
+  function logDebug(message, isError) {
+    if (createRoomDebug) {
+      var timestamp = new Date().toISOString().substr(11, 8);
+      var color = isError ? '#e74c3c' : '#27ae60';
+      createRoomDebug.style.display = 'block';
+      createRoomDebug.style.borderColor = color;
+      var prefix = isError ? '❌' : '✓';
+      createRoomDebug.innerHTML += '<div style="color: ' + color + ';">[' + timestamp + '] ' + prefix + ' ' + message + '</div>';
+      createRoomDebug.scrollTop = createRoomDebug.scrollHeight;
+    }
+  }
 
   function renderRoomList() {
     if (!roomListContainer) return;
@@ -1049,7 +1071,12 @@
   }
 
   function joinSelectedRoom() {
-    if (!selectedRoomId) return;
+    if (!selectedRoomId) {
+      logDebug('ERROR: No room ID selected!', true);
+      return;
+    }
+
+    logDebug('Joining room: ' + selectedRoomId, false);
 
     var playerName = playerNameInput.value.trim();
     var normalized = normalizeUsername(playerName);
@@ -1057,6 +1084,7 @@
     if (!normalized.valid) {
       nameHintRoom.textContent = 'Nickname must be 3-20 characters (letters, numbers, spaces, - or _)';
       nameHintRoom.style.color = '#e74c3c';
+      logDebug('ERROR: Invalid nickname when joining', true);
       return;
     }
 
@@ -1066,6 +1094,7 @@
     var roomIdForJoin = selectedRoomId;
     nicknameInput.value = normalized.displayName;
 
+    logDebug('Emitting room:join event...', false);
     socket.emit('room:join', {
       roomId: roomIdForJoin,
       name: normalized.displayName,
@@ -1077,20 +1106,40 @@
   }
 
   if (createRoomBtn) {
+    logDebug('Create Room button element found!', false);
     createRoomBtn.addEventListener('click', function() {
+      logDebug('Create Room button clicked!', false);
+
       var playerName = playerNameInput.value.trim();
+      logDebug('Player name input: "' + playerName + '"', false);
+
       var normalized = normalizeUsername(playerName);
+      logDebug('Normalized: valid=' + normalized.valid + ', displayName="' + normalized.displayName + '"', false);
 
       if (!normalized.valid) {
         nameHintRoom.textContent = 'Nickname must be 3-20 characters (letters, numbers, spaces, - or _)';
         nameHintRoom.style.color = '#e74c3c';
+        logDebug('Validation failed: nickname invalid', true);
         return;
       }
 
+      logDebug('Socket connected: ' + socket.connected, false);
+
+      if (!socket.connected) {
+        logDebug('ERROR: Socket not connected! Cannot create room.', true);
+        nameHintRoom.textContent = 'Connection error. Please refresh the page.';
+        nameHintRoom.style.color = '#e74c3c';
+        return;
+      }
+
+      logDebug('Emitting room:create event...', false);
       socket.emit('room:create', {
         name: normalized.displayName
       });
     });
+  } else {
+    console.error('createRoomBtn element not found!');
+    logDebug('ERROR: Create Room button element not found in DOM!', true);
   }
 
   // ── Socket ──────────────────────────────────────────────────────────────────
@@ -1104,6 +1153,7 @@
       localPlayerId = socket.id;
       statusMsg.textContent = 'Connected. Enter nickname and join!';
       socket.emit('rooms:list');
+      logDebug('Socket connected, ID: ' + socket.id, false);
     });
 
     socket.on('rooms:update', function(roomList) {
@@ -1112,11 +1162,19 @@
     });
 
     socket.on('room:created', function(data) {
+      logDebug('Room created! ID: ' + data.roomId, false);
       selectedRoomId = data.roomId;
       joinSelectedRoom();
     });
 
+    socket.on('room:error', function(data) {
+      logDebug('ERROR: ' + data.message, true);
+      nameHintRoom.textContent = data.message;
+      nameHintRoom.style.color = '#e74c3c';
+    });
+
     socket.on('room:joined', function(data) {
+      logDebug('Successfully joined room!', false);
       currentMatch = data.match;
       roomSelectorOverlay.style.display = 'none';
       lobbyOverlay.style.display = 'flex';
@@ -1325,6 +1383,21 @@
       if (data.despawned) {
         currentMatch.items = currentMatch.items.filter(function(i) { return i.id !== data.itemId; });
       }
+    });
+
+    socket.on('disconnect', function(reason) {
+      logDebug('Socket disconnected: ' + reason, true);
+      console.error('[Socket] Disconnected:', reason);
+    });
+
+    socket.on('connect_error', function(error) {
+      logDebug('Socket connection error: ' + error.message, true);
+      console.error('[Socket] Connection error:', error);
+    });
+
+    socket.on('error', function(error) {
+      logDebug('Socket error: ' + error, true);
+      console.error('[Socket] Error:', error);
     });
   }
 
@@ -2701,6 +2774,9 @@
 
   connectSocket();
   gameLoop();
+
+  // Initialize debug panel
+  logDebug('Debug panel initialized. Click Create Room to see logs.', false);
 
   nicknameInput.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') document.getElementById('joinBtn').click();
