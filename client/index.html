@@ -60,6 +60,7 @@
       align-items: center; justify-content: center; z-index: 10;
       overflow-y: auto;
       padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+      pointer-events: none;
     }
     #roomSelectorOverlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -67,6 +68,7 @@
       align-items: center; justify-content: center; z-index: 15;
       overflow-y: auto;
       padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+      pointer-events: none;
     }
     .room-selector-box {
       background: #16213e; border: 1px solid #0f3460; border-radius: 12px;
@@ -93,11 +95,13 @@
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0,0,0,0.9); display: none; flex-direction: column;
       align-items: center; justify-content: center; z-index: 20;
+      pointer-events: none;
     }
     .lobby-box {
       background: #16213e; border: 1px solid #0f3460; border-radius: 12px;
       padding: 16px 14px; width: 96vw; max-width: 960px;
       display: flex; flex-direction: row; gap: 24px; align-items: flex-start;
+      pointer-events: auto;
     }
     .lobby-col { flex: 1; min-width: 0; }
     h1 { font-size: 2rem; color: #e94560; margin-bottom: 8px; text-align: center; }
@@ -128,9 +132,9 @@
     #countdown { font-size: 5rem; color: #e94560; font-weight: bold; text-align: center; display: none; margin: 20px 0; }
     #statusMsg { color: #f39c12; text-align: center; margin-top: 10px; min-height: 20px; font-size: 0.9rem; }
     #queueMsg { color: #3498db; text-align: center; margin-top: 8px; display: none; font-size: 0.95rem; }
-    #gameOverTitle { font-size: 4rem; color: #e94560; margin-bottom: 16px; }
-    #winnerName { font-size: 2rem; color: #f39c12; margin-bottom: 30px; }
-    #playAgainBtn { background: #e94560; color: #fff; padding: 12px 40px; font-size: 1.2rem; }
+    #gameOverTitle { font-size: 4rem; color: #e94560; margin-bottom: 16px; pointer-events: auto; }
+    #winnerName { font-size: 2rem; color: #f39c12; margin-bottom: 30px; pointer-events: auto; }
+    #playAgainBtn { background: #e94560; color: #fff; padding: 12px 40px; font-size: 1.2rem; cursor: pointer; pointer-events: auto; }
     #controls { color: #888; font-size: 0.75rem; margin-top: 14px; text-align: center; line-height: 1.6; }
     #mapSection { margin-top: 16px; }
     #mapSection h3 { color: #aaa; font-size: 0.9rem; margin-bottom: 8px; }
@@ -163,7 +167,7 @@
       color: #aaa; border: 1px solid #333; border-radius: 4px; padding: 4px 8px;
       font-size: 0.7rem; cursor: pointer; z-index: 30; }
     /* ── Leaderboard ──────────────────────────────────────────────────────── */
-    #leaderboardSection { margin-top: 24px; width: 100%; max-width: 480px; }
+    #leaderboardSection { margin-top: 24px; width: 100%; max-width: 480px; pointer-events: auto; }
     #leaderboardSection h3 { color: #f39c12; font-size: 1.1rem; margin-bottom: 10px; text-align: center; }
     #leaderboardTable { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
     #leaderboardTable th { color: #aaa; font-weight: normal; padding: 4px 8px; border-bottom: 1px solid #0f3460; text-align: left; }
