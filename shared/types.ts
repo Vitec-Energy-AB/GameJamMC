@@ -78,6 +78,10 @@ export interface Player {
   name: string;
   /** Selected character id (e.g. 'bjork', 'gnista', 'malm', 'dimma') */
   character?: string;
+  /** True if this player is a server-controlled AI bot */
+  isBot?: boolean;
+  /** Difficulty level for bot players (1=Beginner … 5=Master) */
+  botDifficulty?: 1 | 2 | 3 | 4 | 5;
   position: { x: number; y: number };
   velocity: { x: number; y: number };
   facing: 'left' | 'right';

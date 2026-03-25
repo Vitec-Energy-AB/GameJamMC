@@ -22,7 +22,7 @@ export class LobbyManager {
     io.to(roomId).emit('room:update', match);
 
     const allReady = match.players.length >= 2 &&
-      match.players.every(p => p.status === 'ready');
+      match.players.every(p => p.status === 'ready' || p.isBot);
     if (allReady) {
       this.startCountdown(roomId, match, io);
     }
