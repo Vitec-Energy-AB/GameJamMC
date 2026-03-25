@@ -1,12 +1,17 @@
 import { Match, Player } from '../shared/types';
 import { Server } from 'socket.io';
+import { v4 as uuidv4 } from 'uuid';
 import { respawnPlayer, initPlayerLives } from './combat/EliminationSystem';
 import { buildMovingPlatformStates } from './physics/MovingPlatform';
 import { buildCrumblingPlatformStates } from './physics/CrumblingPlatform';
 import { DEFAULT_LAVA_RISE_SPEED, DEFAULT_LAVA_DAMAGE, DEFAULT_START_DELAY, DEFAULT_ACCELERATION, resetLavaDamageTracking } from './physics/LavaSystem';
 import { initPlatformGenerator, resetPlatformGenerator } from './physics/PlatformGenerator';
+import type { LeaderboardService } from './leaderboard/LeaderboardService';
+import { GAME_VERSION } from '../shared/constants';
 
 export class MatchManager {
+  constructor(private readonly leaderboardService?: LeaderboardService) {}
+
   checkWinCondition(match: Match): string | null {
     if (match.state !== 'active') return null;
 
@@ -32,6 +37,22 @@ export class MatchManager {
       winnerId,
       winnerName: winner?.name ?? 'Draw',
     });
+
+    // Submit winner's score to the leaderboard (server-side, single source of truth)
+    if (this.leaderboardService && winner && winnerId !== 'draw' && match.runId) {
+      const score = Math.max(0, winner.currentLives) * 100;
+      try {
+        this.leaderboardService.submitScore({
+          runId: match.runId,
+          name: winner.name,
+          score,
+          gameVersion: GAME_VERSION,
+        });
+        console.log(`[leaderboard] Submitted score ${score} for "${winner.name}" (runId=${match.runId})`);
+      } catch (err) {
+        console.warn('[leaderboard] Failed to submit score', err);
+      }
+    }
 
     // Reset match after delay, process queue
     setTimeout(() => {
@@ -92,6 +113,9 @@ export class MatchManager {
   }
 
   initMatch(match: Match): void {
+    // Generate a fresh run UUID for idempotent score submission
+    match.runId = uuidv4();
+
     const spawn = match.map.spawnPoints;
     match.players.forEach((player, i) => {
       initPlayerLives(player, match.mode);

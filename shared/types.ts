@@ -148,6 +148,8 @@ export interface LavaState {
 
 export interface Match {
   roomId: string;
+  /** UUID generated at the start of each match run – used as idempotency key for score submission */
+  runId?: string;
   state: 'lobby' | 'countdown' | 'active' | 'ended';
   players: Player[];
   queue: Player[];

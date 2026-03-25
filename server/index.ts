@@ -12,6 +12,9 @@ import { MapSelector, AVAILABLE_MAPS } from './MapSelector';
 import { performAttack } from './combat/MeleeAttack';
 import { createBomb } from './combat/BombSystem';
 import { CHARACTERS, getCharacter } from '../shared/characters';
+import { FileLeaderboardStore } from './leaderboard/FileLeaderboardStore';
+import { LeaderboardService } from './leaderboard/LeaderboardService';
+import { createLeaderboardRouter } from './leaderboard/leaderboardRouter';
 
 const app = express();
 const httpServer = createServer(app);
@@ -36,6 +39,11 @@ app.use(express.static(path.join(__dirname, '../../client')));
 app.use('/sprites', express.static(path.join(__dirname, '../../Sprites')));
 app.use('/resources', express.static(path.join(__dirname, '../../Resources')));
 
+// ── Leaderboard ─────────────────────────────────────────────────────────────
+const leaderboardStore = new FileLeaderboardStore();
+const leaderboardService = new LeaderboardService(leaderboardStore);
+app.use('/api/leaderboard', express.json(), createLeaderboardRouter(leaderboardService));
+
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', uptime: process.uptime() });
 });
@@ -50,7 +58,7 @@ app.get('/', pageRateLimit, (_req, res) => {
 
 const sessionManager = new SessionManager();
 const roomManager = new RoomManager();
-const matchManager = new MatchManager();
+const matchManager = new MatchManager(leaderboardService);
 const gameLoop = new GameLoop(matchManager);
 const lobbyManager = new LobbyManager(matchManager, gameLoop);
 const mapSelector = new MapSelector();

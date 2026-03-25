@@ -478,3 +478,94 @@ Lägg till en spelare som kan hoppa och röra sig åt vänster och höger.
 * Håll prompts enkla men tydliga.
 * Testa varje commit innan du skickar nästa prompt.
 * Använd beskrivande namn på funktioner och variabler.
+
+---
+
+## 🏆 Online Leaderboard & Player Profile
+
+### Overview
+
+The game now includes a shared online leaderboard and persistent username suggestion.
+
+#### Features
+- **Remember last username** – the last confirmed nickname is stored in `localStorage` (versioned blob `{ version: 1, lastUsername }`) and pre-filled on the next visit. Falls back to `GitMangoCoder` when no previous session exists.
+- **Username validation** – names are trimmed, inner-whitespace collapsed, min 3 / max 20 characters, allowed characters: letters (Unicode), digits, space, `_`, `-`. Invalid names fall back to `Player`.
+- **Online shared leaderboard** – all matches write a score entry to the server. The leaderboard is fetched and displayed on the Game Over screen.
+- **Score** – `winner.currentLives × 100` (100–300 for stock mode, 100 for knockout mode).
+- **Sorting** – `score DESC → createdAt ASC → id ASC`.
+- **Idempotency** – each match has a UUID `runId`; duplicate submissions are silently ignored.
+
+### Architecture
+
+```
+shared/
+  leaderboard.ts      – shared entry types & schema
+  username.ts         – normalisation/validation (also used by tests)
+  constants.ts        – GAME_VERSION constant
+
+server/leaderboard/
+  ILeaderboardStore.ts     – storage interface
+  FileLeaderboardStore.ts  – JSON-file store with corruption fallback
+  LeaderboardService.ts    – sorting, tie-break, MAX_ENTRIES, idempotency
+  leaderboardRouter.ts     – GET /api/leaderboard, POST /api/leaderboard/submit
+
+data/
+  leaderboard.json    – runtime data file (created automatically, gitignored)
+```
+
+### API
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/leaderboard?limit=10` | Fetch top entries (max 100) |
+| `POST` | `/api/leaderboard/submit` | Submit a score (server-internal; also available for admin/testing) |
+
+### Environment variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `3000` | Server port |
+| `CORS_ORIGIN` | `*` | Allowed CORS origin |
+| `LEADERBOARD_FILE` | `./data/leaderboard.json` | Override leaderboard data file path |
+
+### Running locally
+
+```bash
+npm install
+npm run dev        # development (ts-node)
+# or
+npm run build && npm start  # production build
+```
+
+### Running tests
+
+```bash
+npm test
+```
+
+Tests cover: username normalization/validation, leaderboard sorting & tie-break, idempotent submission, corruption fallback, MAX_ENTRIES trimming.
+
+### Deploying
+
+The server is a plain Node.js / Express app. It can be deployed to any Node-compatible platform.
+
+**Docker (recommended)**
+```bash
+docker compose up -d
+```
+
+**Fly.io example**
+```bash
+fly launch   # follow prompts
+fly deploy
+```
+
+**Important**: on platforms with ephemeral file systems (e.g. Heroku dynos without a persistent volume) the `data/leaderboard.json` file will be reset on restart. Set `LEADERBOARD_FILE` to a path on a persistent volume, or replace `FileLeaderboardStore` with a database-backed implementation of `ILeaderboardStore`.
+
+### Data lifecycle
+
+1. **Server starts** → `FileLeaderboardStore` loads `data/leaderboard.json` (created on first write).
+2. **Match ends** → `MatchManager.endMatch()` calls `LeaderboardService.submitScore()` with the winner's name and score. The `runId` (UUID per match) ensures idempotency.
+3. **Game Over screen shown** → client fetches `GET /api/leaderboard?limit=10` and renders the top-10 table.
+4. **Player opens game** → `localStorage` is read; last username is pre-filled in the nickname input.
+5. **Player clicks Join** → username is normalised/validated; the confirmed name is saved to `localStorage`.

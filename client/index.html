@@ -84,6 +84,19 @@
     #musicToggle { position: fixed; top: 8px; right: 12px; background: rgba(0,0,0,0.5);
       color: #aaa; border: 1px solid #333; border-radius: 4px; padding: 4px 8px;
       font-size: 0.7rem; cursor: pointer; z-index: 30; }
+    /* ── Leaderboard ──────────────────────────────────────────────────────── */
+    #leaderboardSection { margin-top: 24px; width: 100%; max-width: 480px; }
+    #leaderboardSection h3 { color: #f39c12; font-size: 1.1rem; margin-bottom: 10px; text-align: center; }
+    #leaderboardTable { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    #leaderboardTable th { color: #aaa; font-weight: normal; padding: 4px 8px; border-bottom: 1px solid #0f3460; text-align: left; }
+    #leaderboardTable td { padding: 6px 8px; border-bottom: 1px solid #0d2040; }
+    #leaderboardTable tr.lb-me td { color: #f39c12; font-weight: bold; }
+    #leaderboardTable tr:nth-child(1) td:first-child { color: #ffd700; }
+    #leaderboardTable tr:nth-child(2) td:first-child { color: #c0c0c0; }
+    #leaderboardTable tr:nth-child(3) td:first-child { color: #cd7f32; }
+    #leaderboardStatus { color: #888; font-size: 0.8rem; text-align: center; margin-top: 6px; min-height: 16px; }
+    /* ── Nickname hint ────────────────────────────────────────────────────── */
+    #nameHint { font-size: 0.78rem; color: #888; margin-top: 3px; min-height: 16px; }
   </style>
 </head>
 <body>
@@ -103,6 +116,7 @@
       <div class="form-row">
         <label for="nicknameInput">Your Nickname</label>
         <input type="text" id="nicknameInput" placeholder="Enter nickname..." maxlength="20" />
+        <div id="nameHint"></div>
       </div>
       <div id="charSection">
         <label>Choose Character</label>
@@ -162,6 +176,21 @@
 <div id="gameOverScreen">
   <div id="gameOverTitle">GAME OVER</div>
   <div id="winnerName"></div>
+  <div id="leaderboardSection">
+    <h3>&#x1F3C6; Top 10 Leaderboard</h3>
+    <table id="leaderboardTable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Player</th>
+          <th>Score</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody id="leaderboardBody"></tbody>
+    </table>
+    <div id="leaderboardStatus">Loading leaderboard...</div>
+  </div>
   <button id="playAgainBtn" onclick="location.reload()">Play Again</button>
 </div>
 
@@ -172,6 +201,89 @@
   var PLAYER_W = 80, PLAYER_H = 120;
   var CANVAS_W = 1200, CANVAS_H = 700;
   var INTERPOLATION_DELAY = 100; // ms
+
+  // ── Profile Store (localStorage) ────────────────────────────────────────────
+  var PROFILE_KEY = 'gamejammc_profile';
+  var PROFILE_VERSION = 1;
+  var DEFAULT_SUGGESTION = 'GitMangoCoder';
+
+  function loadProfile() {
+    try {
+      var raw = localStorage.getItem(PROFILE_KEY);
+      if (!raw) return { version: PROFILE_VERSION, lastUsername: null };
+      var parsed = JSON.parse(raw);
+      if (!parsed || parsed.version !== PROFILE_VERSION) return { version: PROFILE_VERSION, lastUsername: null };
+      if (typeof parsed.lastUsername !== 'string' && parsed.lastUsername !== null) return { version: PROFILE_VERSION, lastUsername: null };
+      return parsed;
+    } catch (e) {
+      console.warn('[profile] Failed to load profile:', e);
+      return { version: PROFILE_VERSION, lastUsername: null };
+    }
+  }
+
+  function saveProfile(lastUsername) {
+    try {
+      localStorage.setItem(PROFILE_KEY, JSON.stringify({ version: PROFILE_VERSION, lastUsername: lastUsername }));
+    } catch (e) {
+      console.warn('[profile] Failed to save profile:', e);
+    }
+  }
+
+  function getSuggestedUsername() {
+    var profile = loadProfile();
+    return profile.lastUsername || DEFAULT_SUGGESTION;
+  }
+
+  // ── Username Normalisation ───────────────────────────────────────────────────
+  var NAME_MIN = 3;
+  var NAME_MAX = 20;
+  var NAME_ALLOWED_RE = /^[\u00C0-\u024F\u0400-\u04FFa-zA-Z0-9 _-]+$/;
+  var NAME_DEFAULT = 'Player';
+
+  function normalizeUsername(input) {
+    if (typeof input !== 'string') return { displayName: NAME_DEFAULT, nameKey: NAME_DEFAULT.toLowerCase(), valid: false };
+    var name = input.trim().replace(/\s+/g, ' ');
+    if (name.length > NAME_MAX) name = name.slice(0, NAME_MAX).trim();
+    var valid = name.length >= NAME_MIN && name.length <= NAME_MAX && NAME_ALLOWED_RE.test(name);
+    if (!valid) return { displayName: NAME_DEFAULT, nameKey: NAME_DEFAULT.toLowerCase(), valid: false };
+    return { displayName: name, nameKey: name.toLowerCase(), valid: true };
+  }
+
+  // ── Leaderboard helpers ──────────────────────────────────────────────────────
+  var lastWinnerName = null;
+
+  function fetchLeaderboard() {
+    var status = document.getElementById('leaderboardStatus');
+    var tbody = document.getElementById('leaderboardBody');
+    if (status) status.textContent = 'Loading leaderboard\u2026';
+    if (tbody) tbody.innerHTML = '';
+    fetch('/api/leaderboard?limit=10')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (!data.entries || !data.entries.length) {
+          if (status) status.textContent = 'No entries yet \u2013 be the first!';
+          return;
+        }
+        if (status) status.textContent = '';
+        if (!tbody) return;
+        data.entries.forEach(function(e, idx) {
+          var tr = document.createElement('tr');
+          var dateStr = '';
+          try { dateStr = new Date(e.createdAt).toLocaleDateString(); } catch(_) {}
+          if (lastWinnerName && e.nameKey === lastWinnerName.toLowerCase()) tr.className = 'lb-me';
+          tr.innerHTML =
+            '<td>' + (idx + 1) + '</td>' +
+            '<td>' + escHtml(e.name) + '</td>' +
+            '<td>' + e.score + '</td>' +
+            '<td>' + dateStr + '</td>';
+          tbody.appendChild(tr);
+        });
+      })
+      .catch(function(err) {
+        console.warn('[leaderboard] Fetch failed:', err);
+        if (status) status.textContent = 'Could not load leaderboard.';
+      });
+  }
 
   // ── Sprite Loading ──────────────────────────────────────────────────────────
   var sprites = {};
@@ -616,11 +728,16 @@
       var winnerNameEl = document.getElementById('winnerName');
       if (data.winnerId === 'draw') {
         winnerNameEl.textContent = "It's a Draw!";
+        lastWinnerName = null;
       } else if (data.winnerId === localPlayerId) {
         winnerNameEl.textContent = '🏆 You Win!';
+        lastWinnerName = data.winnerName || null;
       } else {
         winnerNameEl.textContent = 'Winner: ' + data.winnerName;
+        lastWinnerName = data.winnerName || null;
       }
+      // Fetch updated leaderboard after a short delay so the server has time to write it
+      setTimeout(fetchLeaderboard, 800);
     });
 
     socket.on('player:disconnect', function() {
@@ -701,10 +818,18 @@
     });
   }
 
+  var joinBtnLocked = false;
   document.getElementById('joinBtn').addEventListener('click', function() {
-    var name = nicknameInput.value.trim() || 'Player' + Math.floor(Math.random() * 1000);
+    if (joinBtnLocked) return;
+    var normalized = normalizeUsername(nicknameInput.value);
+    var name = normalized.displayName;
+    saveProfile(name);
     var mode = modeSelect.value;
+    joinBtnLocked = true;
+    document.getElementById('joinBtn').disabled = true;
     socket.emit('room:join', { roomId: roomId, name: name, mode: mode, character: selectedCharacter });
+    // Re-enable after brief delay in case of reconnect
+    setTimeout(function() { joinBtnLocked = false; document.getElementById('joinBtn').disabled = false; }, 3000);
   });
 
   readyBtn.addEventListener('click', function() {
@@ -1508,6 +1633,19 @@
   }
 
   // ── Init ────────────────────────────────────────────────────────────────────
+  // Pre-fill nickname with last used username (or default suggestion)
+  (function initProfile() {
+    var suggested = getSuggestedUsername();
+    nicknameInput.value = suggested;
+    var profile = loadProfile();
+    var hintEl = document.getElementById('nameHint');
+    if (hintEl) {
+      hintEl.textContent = profile.lastUsername
+        ? 'Last used: ' + profile.lastUsername
+        : 'Suggested: ' + DEFAULT_SUGGESTION;
+    }
+  })();
+
   // Load sprites first
   loadSprites(function() {
     console.log('Sprites loaded successfully');
