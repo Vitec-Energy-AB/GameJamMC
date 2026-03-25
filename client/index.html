@@ -95,6 +95,14 @@
       position: relative; z-index: 10;
       padding: 10px 24px; border: none; border-radius: 6px;
       font-size: 1rem; font-weight: bold;
+      transition: transform 0.1s, background 0.2s;
+    }
+    #createRoomBtn:hover {
+      background: #2ecc71;
+    }
+    #createRoomBtn:active {
+      transform: scale(0.98);
+      background: #229954;
     }
     #gameOverScreen {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -1098,6 +1106,7 @@
   }
 
   if (createRoomBtn) {
+    logDebug('Create Room button element found!', false);
     createRoomBtn.addEventListener('click', function() {
       logDebug('Create Room button clicked!', false);
 
@@ -1130,6 +1139,7 @@
     });
   } else {
     console.error('createRoomBtn element not found!');
+    logDebug('ERROR: Create Room button element not found in DOM!', true);
   }
 
   // ── Socket ──────────────────────────────────────────────────────────────────
@@ -2764,6 +2774,9 @@
 
   connectSocket();
   gameLoop();
+
+  // Initialize debug panel
+  logDebug('Debug panel initialized. Click Create Room to see logs.', false);
 
   nicknameInput.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') document.getElementById('joinBtn').click();
