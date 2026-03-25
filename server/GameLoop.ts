@@ -1,5 +1,5 @@
 import { Server } from 'socket.io';
-import { Match } from '../shared/types';
+import { Match, Player } from '../shared/types';
 import { applyMovement } from './physics/Movement';
 import { applyGravity, applyJump } from './physics/Gravity';
 import { checkPlatformCollisions } from './physics/Collision';
@@ -7,13 +7,14 @@ import { updateBomb, checkBombCollisions } from './physics/Projectile';
 import { updateBlock } from './combat/BlockSystem';
 import { checkBlastZones, eliminatePlayer, respawnPlayer } from './combat/EliminationSystem';
 import { MatchManager } from './MatchManager';
-import { explodeBomb } from './combat/BombSystem';
+import { createBomb, explodeBomb } from './combat/BombSystem';
 import { updateMovingPlatforms } from './physics/MovingPlatform';
 import { updateCrumblingPlatforms, getCrumblingPlatformForCollision } from './physics/CrumblingPlatform';
 import { ItemSpawnManager } from './items/ItemSpawnManager';
 import { initLavaState, updateLava, resetLavaDamageTracking } from './physics/LavaSystem';
 import { initPlatformGenerator, updatePlatformGeneration, resetPlatformGenerator } from './physics/PlatformGenerator';
 import { BotManager } from './bots/BotManager';
+import { performAttack } from './combat/MeleeAttack';
 
 const TICK_RATE = 60;
 const TICK_INTERVAL = 1000 / TICK_RATE;
@@ -21,10 +22,14 @@ const TICK_INTERVAL = 1000 / TICK_RATE;
 const AUTO_DEATH_DAMAGE_THRESHOLD = 800;
 const OVERDAMAGE_VERTICAL_VELOCITY = -2000;
 const OVERDAMAGE_HORIZONTAL_VELOCITY = 1500;
+const ATTACK_ANIMATION_DURATION_MS = 300;
 
 export class GameLoop {
   private intervals: Map<string, ReturnType<typeof setInterval>> = new Map();
   private jumpPressed: Map<string, boolean> = new Map();
+  private attackPressed: Map<string, boolean> = new Map();
+  private throwBombPressed: Map<string, boolean> = new Map();
+  private useWeaponPressed: Map<string, boolean> = new Map();
   private duckStartTimes: Map<string, number> = new Map();
   private matchManager: MatchManager;
   private itemSpawnManager: ItemSpawnManager;
@@ -134,6 +139,36 @@ export class GameLoop {
           }
         }
         updateBlock(player, dt);
+
+        // Attack handling (edge-detected so it fires once per press)
+        const prevAttack = this.attackPressed.get(player.id) ?? false;
+        if (player.inputState.attack && !prevAttack) {
+          this.handleMeleeAttack(player, match, io, now);
+        }
+        this.attackPressed.set(player.id, player.inputState.attack);
+
+        // Throw bomb handling (edge-detected)
+        const prevThrowBomb = this.throwBombPressed.get(player.id) ?? false;
+        if (player.inputState.throwBomb && !prevThrowBomb) {
+          if (player.bombCooldownUntil <= now) {
+            player.bombCooldownUntil = now + 2000;
+            const bomb = createBomb(player, player.facing);
+            match.bombs.push(bomb);
+            io.to(roomId).emit('bomb:thrown', { bomb });
+          }
+        }
+        this.throwBombPressed.set(player.id, player.inputState.throwBomb);
+
+        // Use weapon handling (edge-detected)
+        const prevUseWeapon = this.useWeaponPressed.get(player.id) ?? false;
+        if (player.inputState.useWeapon && !prevUseWeapon) {
+          if (player.currentWeapon && player.currentWeapon.category === 'melee') {
+            this.handleMeleeAttack(player, match, io, now);
+          } else {
+            this.itemSpawnManager.handleUseWeapon(match, player.id, io);
+          }
+        }
+        this.useWeaponPressed.set(player.id, player.inputState.useWeapon);
 
         // Clear attack animation flag after duration expires
         if (player.isAttacking && player.attackAnimUntil !== undefined && now >= player.attackAnimUntil) {
@@ -251,6 +286,28 @@ export class GameLoop {
 
   getBotManager(): BotManager {
     return this.botManager;
+  }
+
+  private handleMeleeAttack(
+    player: Player,
+    match: Match,
+    io: Server,
+    now: number,
+  ): void {
+    let weaponOverride: { damage: number; knockbackModifier: number } | undefined;
+    if (player.currentWeapon && player.currentWeapon.category === 'melee') {
+      weaponOverride = {
+        damage: player.currentWeapon.damage,
+        knockbackModifier: player.currentWeapon.knockbackModifier,
+      };
+      this.itemSpawnManager.handleMeleeWeaponAttack(match, player.id, io);
+    }
+    const results = performAttack(player, match.players, weaponOverride);
+    player.isAttacking = true;
+    player.attackAnimUntil = now + ATTACK_ANIMATION_DURATION_MS;
+    if (results.length > 0) {
+      io.to(match.roomId).emit('player:hit', { results, type: 'melee', attackerId: player.id });
+    }
   }
 }
 

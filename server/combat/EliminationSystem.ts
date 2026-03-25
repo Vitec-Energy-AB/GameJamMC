@@ -6,6 +6,8 @@ const RESPAWN_DELAY = 3000; // ms
 const INVULNERABLE_DURATION = 1000; // ms
 const STOCK_LIVES = 3;
 const KNOCKOUT_LIVES = 1;
+const LAVA_SAFETY_MARGIN = 100; // px above lava surface required for a valid spawn point
+const LAVA_RESPAWN_OFFSET = 150; // px above lava surface to nudge player if still too close
 
 export function checkBlastZones(player: Player, blastZones: Match['map']['blastZones']): boolean {
   return (
@@ -30,7 +32,7 @@ export function eliminatePlayer(player: Player, match: Match, io: Server): void 
 export function respawnPlayer(player: Player, spawnPoints: { x: number; y: number }[], lavaY?: number): void {
   let candidates = spawnPoints;
   if (lavaY !== undefined) {
-    const safePoints = spawnPoints.filter(sp => sp.y + PLAYER_HEIGHT < lavaY);
+    const safePoints = spawnPoints.filter(sp => sp.y + PLAYER_HEIGHT < lavaY - LAVA_SAFETY_MARGIN);
     if (safePoints.length > 0) {
       candidates = safePoints;
     } else {
@@ -40,6 +42,10 @@ export function respawnPlayer(player: Player, spawnPoints: { x: number; y: numbe
   }
   const spawn = candidates[Math.floor(Math.random() * candidates.length)];
   player.position = { x: spawn.x, y: spawn.y };
+  // If the chosen spawn is still in or too close to lava, nudge the player well above it
+  if (lavaY !== undefined && player.position.y + PLAYER_HEIGHT >= lavaY - LAVA_SAFETY_MARGIN) {
+    player.position.y = lavaY - LAVA_RESPAWN_OFFSET;
+  }
   player.velocity = { x: 0, y: 0 };
   player.status = 'alive';
   player.isGrounded = false;
