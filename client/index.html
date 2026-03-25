@@ -56,11 +56,39 @@
     @keyframes spin90 { from { transform: rotate(0deg); } to { transform: rotate(90deg); } }
     #lobbyOverlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.85); display: flex; flex-direction: column;
+      background: rgba(0,0,0,0.85); display: none; flex-direction: column;
       align-items: center; justify-content: center; z-index: 10;
       overflow-y: auto;
       padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
     }
+    #roomSelectorOverlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.85); display: flex; flex-direction: column;
+      align-items: center; justify-content: center; z-index: 15;
+      overflow-y: auto;
+      padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+    }
+    .room-selector-box {
+      background: #16213e; border: 1px solid #0f3460; border-radius: 12px;
+      padding: 24px; width: 96vw; max-width: 600px;
+    }
+    .room-list { margin-top: 16px; max-height: 400px; overflow-y: auto; }
+    .room-item {
+      background: #0f3460; border: 2px solid transparent; border-radius: 8px;
+      padding: 12px; margin-bottom: 8px; cursor: pointer; transition: border-color 0.2s;
+    }
+    .room-item:hover { border-color: #e94560; }
+    .room-item.disabled { opacity: 0.5; cursor: not-allowed; }
+    .room-item.disabled:hover { border-color: transparent; }
+    .room-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .room-name { font-size: 1.1rem; font-weight: bold; color: #eee; }
+    .room-state { font-size: 0.8rem; padding: 2px 8px; border-radius: 10px; }
+    .room-state.lobby { background: #27ae60; color: #fff; }
+    .room-state.countdown { background: #f39c12; color: #fff; }
+    .room-state.active { background: #e94560; color: #fff; }
+    .room-state.ended { background: #3498db; color: #fff; }
+    .room-info { display: flex; gap: 16px; font-size: 0.85rem; color: #aaa; }
+    #createRoomBtn { background: #27ae60; color: #fff; width: 100%; margin-top: 16px; }
     #gameOverScreen {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0,0,0,0.9); display: none; flex-direction: column;
@@ -189,6 +217,22 @@
 <audio id="gameMusic" src="/resources/GameMusic.mp3" loop preload="auto"></audio>
 
 <button id="shootBtn" aria-label="Shoot">&#x2694;&#xFE0F;<br>SHOOT</button>
+
+<div id="roomSelectorOverlay">
+  <div class="room-selector-box">
+    <div style="text-align: center; margin-bottom: 16px;">
+      <img src="/resources/Titel.png" alt="Platform Fighter" style="max-width: 100%; height: auto; border-radius: 8px;" />
+    </div>
+    <h1>Select a Room</h1>
+    <div class="form-row">
+      <label for="playerNameInput">Your Nickname</label>
+      <input type="text" id="playerNameInput" placeholder="Enter nickname..." maxlength="20" />
+      <div id="nameHintRoom"></div>
+    </div>
+    <div class="room-list" id="roomList"></div>
+    <button id="createRoomBtn">Create New Room</button>
+  </div>
+</div>
 
 <div id="lobbyOverlay">
   <div class="lobby-box">
@@ -935,17 +979,139 @@
     }
   }());
 
+  // ── Room Management ──────────────────────────────────────────────────────────
+  var roomSelectorOverlay = document.getElementById('roomSelectorOverlay');
+  var roomListContainer = document.getElementById('roomList');
+  var createRoomBtn = document.getElementById('createRoomBtn');
+  var playerNameInput = document.getElementById('playerNameInput');
+  var nameHintRoom = document.getElementById('nameHintRoom');
+
+  function renderRoomList() {
+    if (!roomListContainer) return;
+    roomListContainer.innerHTML = '';
+
+    if (availableRooms.length === 0) {
+      var emptyMsg = document.createElement('div');
+      emptyMsg.style.textAlign = 'center';
+      emptyMsg.style.color = '#aaa';
+      emptyMsg.style.padding = '20px';
+      emptyMsg.textContent = 'No rooms available. Create one to get started!';
+      roomListContainer.appendChild(emptyMsg);
+      return;
+    }
+
+    availableRooms.forEach(function(room) {
+      var roomItem = document.createElement('div');
+      roomItem.className = 'room-item' + (room.canJoin ? '' : ' disabled');
+
+      var roomHeader = document.createElement('div');
+      roomHeader.className = 'room-header';
+
+      var roomName = document.createElement('div');
+      roomName.className = 'room-name';
+      roomName.textContent = room.name;
+
+      var roomState = document.createElement('div');
+      roomState.className = 'room-state ' + room.state;
+      roomState.textContent = room.state.toUpperCase();
+
+      roomHeader.appendChild(roomName);
+      roomHeader.appendChild(roomState);
+
+      var roomInfo = document.createElement('div');
+      roomInfo.className = 'room-info';
+      roomInfo.innerHTML =
+        '<span>Host: ' + escHtml(room.hostName) + '</span>' +
+        '<span>Players: ' + room.playerCount + '/' + room.maxPlayers + '</span>' +
+        '<span>Map: ' + escHtml(room.selectedMap) + '</span>';
+
+      roomItem.appendChild(roomHeader);
+      roomItem.appendChild(roomInfo);
+
+      if (room.canJoin) {
+        roomItem.addEventListener('click', function() {
+          selectedRoomId = room.roomId;
+          joinSelectedRoom();
+        });
+      }
+
+      roomListContainer.appendChild(roomItem);
+    });
+  }
+
+  function joinSelectedRoom() {
+    if (!selectedRoomId) return;
+
+    var playerName = playerNameInput.value.trim();
+    var normalized = normalizeUsername(playerName);
+
+    if (!normalized.valid) {
+      nameHintRoom.textContent = 'Nickname must be 3-20 characters (letters, numbers, spaces, - or _)';
+      nameHintRoom.style.color = '#e74c3c';
+      return;
+    }
+
+    roomSelectorOverlay.style.display = 'none';
+    lobbyOverlay.style.display = 'flex';
+
+    var roomIdForJoin = selectedRoomId;
+    nicknameInput.value = normalized.displayName;
+
+    socket.emit('room:join', {
+      roomId: roomIdForJoin,
+      name: normalized.displayName,
+      mode: selectedMode,
+      character: selectedCharacter
+    });
+
+    saveProfile(normalized.displayName, musicOn);
+  }
+
+  if (createRoomBtn) {
+    createRoomBtn.addEventListener('click', function() {
+      var playerName = playerNameInput.value.trim();
+      var normalized = normalizeUsername(playerName);
+
+      if (!normalized.valid) {
+        nameHintRoom.textContent = 'Nickname must be 3-20 characters (letters, numbers, spaces, - or _)';
+        nameHintRoom.style.color = '#e74c3c';
+        return;
+      }
+
+      socket.emit('room:create', {
+        name: normalized.displayName
+      });
+    });
+  }
+
   // ── Socket ──────────────────────────────────────────────────────────────────
+  var availableRooms = [];
+  var selectedRoomId = null;
+
   function connectSocket() {
     socket = io();
 
     socket.on('connect', function() {
       localPlayerId = socket.id;
       statusMsg.textContent = 'Connected. Enter nickname and join!';
+      socket.emit('rooms:list');
+    });
+
+    socket.on('rooms:update', function(roomList) {
+      availableRooms = roomList;
+      renderRoomList();
+    });
+
+    socket.on('room:created', function(data) {
+      selectedRoomId = data.roomId;
+      joinSelectedRoom();
     });
 
     socket.on('room:joined', function(data) {
       currentMatch = data.match;
+      roomSelectorOverlay.style.display = 'none';
+      lobbyOverlay.style.display = 'flex';
+
       if (data.availableMaps) {
         availableMaps = data.availableMaps;
         renderMapCards();
@@ -2519,12 +2685,29 @@
   // Fetch lobby leaderboard on page load
   fetchLobbyLeaderboard();
 
+  // Initialize player name input in room selector
+  if (playerNameInput) {
+    playerNameInput.value = getSuggestedUsername();
+  }
+
   connectSocket();
   gameLoop();
 
   nicknameInput.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') document.getElementById('joinBtn').click();
   });
+
+  if (playerNameInput) {
+    playerNameInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && availableRooms.length > 0) {
+        var firstJoinable = availableRooms.find(function(r) { return r.canJoin; });
+        if (firstJoinable) {
+          selectedRoomId = firstJoinable.roomId;
+          joinSelectedRoom();
+        }
+      }
+    });
+  }
 })();
 </script>
 <script>

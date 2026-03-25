@@ -7,10 +7,17 @@ import { buildCrumblingPlatformStates } from './physics/CrumblingPlatform';
 import { DEFAULT_LAVA_RISE_SPEED, DEFAULT_LAVA_DAMAGE, DEFAULT_START_DELAY, DEFAULT_ACCELERATION, resetLavaDamageTracking } from './physics/LavaSystem';
 import { initPlatformGenerator, resetPlatformGenerator } from './physics/PlatformGenerator';
 import type { LeaderboardService } from './leaderboard/LeaderboardService';
+import type { RoomManager } from './RoomManager';
 import { GAME_VERSION } from '../shared/constants';
 
 export class MatchManager {
+  private roomManager?: RoomManager;
+
   constructor(private readonly leaderboardService?: LeaderboardService) {}
+
+  setRoomManager(roomManager: RoomManager): void {
+    this.roomManager = roomManager;
+  }
 
   checkWinCondition(match: Match): string | null {
     if (match.state !== 'active') return null;
@@ -37,6 +44,10 @@ export class MatchManager {
       winnerId,
       winnerName: winner?.name ?? 'Draw',
     });
+
+    if (this.roomManager) {
+      io.emit('rooms:update', this.roomManager.getRoomList());
+    }
 
     // Submit winner's score to the leaderboard (server-side, single source of truth)
     // Skip leaderboard submission if the winner is a bot
@@ -103,6 +114,10 @@ export class MatchManager {
     }
 
     io.to(match.roomId).emit('room:update', match);
+
+    if (this.roomManager) {
+      io.emit('rooms:update', this.roomManager.getRoomList());
+    }
   }
 
   respawnPlayer(player: Player, spawnPoints: { x: number; y: number }[]): void {

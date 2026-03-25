@@ -68,9 +68,10 @@ app.get('/', pageRateLimit, (_req, res) => {
 const sessionManager = new SessionManager();
 const roomManager = new RoomManager();
 const matchManager = new MatchManager(leaderboardService);
+matchManager.setRoomManager(roomManager);
 const botManager = new BotManager();
 const gameLoop = new GameLoop(matchManager, botManager);
-const lobbyManager = new LobbyManager(matchManager, gameLoop);
+const lobbyManager = new LobbyManager(matchManager, gameLoop, roomManager);
 const mapSelector = new MapSelector();
 
 // Track player → room mapping
@@ -79,6 +80,17 @@ const playerRoom = new Map<string, string>();
 io.on('connection', (socket) => {
   const sessionId = sessionManager.createSession(socket.id);
   console.log(`[connect] ${socket.id} session=${sessionId}`);
+
+  socket.on('rooms:list', () => {
+    const roomList = roomManager.getRoomList();
+    socket.emit('rooms:update', roomList);
+  });
+
+  socket.on('room:create', (data: { name: string; displayName?: string }) => {
+    const roomId = roomManager.createRoom(socket.id, data.name, data.displayName);
+    socket.emit('room:created', { roomId });
+    io.emit('rooms:update', roomManager.getRoomList());
+  });
 
   socket.on('room:join', (data: { roomId: string; name: string; mode?: 'stock' | 'knockout'; character?: string }) => {
     const roomId = data.roomId || 'lobby';
@@ -130,6 +142,7 @@ io.on('connection', (socket) => {
     } else {
       socket.emit('room:joined', { match, queued: false, availableMaps: AVAILABLE_MAPS.map(m => ({ id: m.id, name: m.map.name, description: m.description })), availableCharacters: CHARACTERS });
       io.to(roomId).emit('room:update', match);
+      io.emit('rooms:update', roomManager.getRoomList());
     }
   });
 
@@ -332,6 +345,7 @@ io.on('connection', (socket) => {
       const match = roomManager.getRoom(roomId);
       if (match) io.to(roomId).emit('room:update', match);
       playerRoom.delete(socket.id);
+      io.emit('rooms:update', roomManager.getRoomList());
     }
     console.log(`[disconnect] ${socket.id}`);
   });
