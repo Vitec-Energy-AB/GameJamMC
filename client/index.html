@@ -947,6 +947,7 @@
     });
 
     socket.on('room:update', function(match) {
+      console.log('[Bot] Room update received', { playerCount: match.players.length, botCount: match.players.filter(function(p) { return p.isBot; }).length });
       currentMatch = match;
       updatePlayerList(match.players);
     });
