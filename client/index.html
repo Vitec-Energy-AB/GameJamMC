@@ -1439,22 +1439,16 @@
   }
 
   var WEAPON_COLORS = {
-    steelclub: '#95a5a6', lasergun: '#00cec9', fireaxe: '#e17055',
-    lightningspear: '#fdcb6e', icecrystal: '#74b9ff'
+    lightningspear: '#fdcb6e'
   };
   var WEAPON_SYMBOLS = {
-    steelclub: '🪃', lasergun: '🔫', fireaxe: '🪓',
-    lightningspear: '⚡', icecrystal: '❄️'
+    lightningspear: '⚡'
   };
   var WEAPON_SPRITES = {
-    steelclub: 'Sword',
-    lasergun: 'LaserGun',
-    fireaxe: 'FireAxe',
-    lightningspear: 'LightningSpear',
-    icecrystal: 'IceCrystal'
+    lightningspear: 'LightningSpear'
   };
-  var POWERUP_COLORS = { shieldsplitter: '#e74c3c', lifecore: '#2ecc71', forcefield: '#00e5ff' };
-  var POWERUP_SYMBOLS = { shieldsplitter: '💥', lifecore: '💚', forcefield: '🛡️' };
+  var POWERUP_COLORS = { forcefield: '#00e5ff' };
+  var POWERUP_SYMBOLS = { forcefield: '🛡️' };
 
   function drawItems(items) {
     if (!items) return;
@@ -1470,7 +1464,7 @@
 
       ctx.save();
       ctx.globalAlpha = pulse;
-      if ('type' in item && (item.type === 'shieldsplitter' || item.type === 'lifecore' || item.type === 'forcefield')) {
+      if ('type' in item && item.type === 'forcefield') {
         // Powerup - use PowerUp sprite
         if (spritesLoaded && sprites['PowerUp'] && sprites['PowerUp'].complete) {
           var pCol = POWERUP_COLORS[item.type] || '#fff';
@@ -1555,19 +1549,6 @@
           ctx.moveTo(proj.position.x, proj.position.y);
           ctx.lineTo(proj.position.x - dir * 24, proj.position.y + 2);
           ctx.stroke();
-        }
-      } else if (proj.type === 'icecrystal') {
-        // Try to use sprite if available
-        if (spritesLoaded && sprites['IceCrystal'] && sprites['IceCrystal'].complete) {
-          ctx.drawImage(sprites['IceCrystal'], proj.position.x - 16, proj.position.y - 16, 32, 32);
-        } else {
-          // Fallback to circle drawing
-          ctx.fillStyle = '#74b9ff';
-          ctx.shadowColor = '#0984e3';
-          ctx.shadowBlur = 10;
-          ctx.beginPath();
-          ctx.arc(proj.position.x, proj.position.y, 8, 0, Math.PI * 2);
-          ctx.fill();
         }
       }
       ctx.restore();

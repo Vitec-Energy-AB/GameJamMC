@@ -9,9 +9,8 @@ const SPAWN_COOLDOWN_MS = 8000;
 type WeaponType = WeaponItem['type'];
 type PowerupType = PowerupItem['type'];
 
-// Projectile travel speeds (px/s)
+// Projectile travel speed (px/s)
 const LIGHTNINGSPEAR_SPEED = 800;
-const ICECRYSTAL_SPEED = 400;
 
 interface WeaponTemplate {
   type: WeaponType;
@@ -26,36 +25,6 @@ interface WeaponTemplate {
 
 const WEAPON_TEMPLATES: WeaponTemplate[] = [
   {
-    type: 'steelclub',
-    category: 'melee',
-    damage: 30,
-    knockbackModifier: 2.2,
-    attackCooldown: 600,
-    durability: 8,
-    ammo: 0,
-    rarity: 'uncommon',
-  },
-  {
-    type: 'lasergun',
-    category: 'melee',
-    damage: 14,
-    knockbackModifier: 1.2,
-    attackCooldown: 200,
-    durability: 15,
-    ammo: 0,
-    rarity: 'common',
-  },
-  {
-    type: 'fireaxe',
-    category: 'melee',
-    damage: 25,
-    knockbackModifier: 1.6,
-    attackCooldown: 400,
-    durability: 10,
-    ammo: 0,
-    rarity: 'common',
-  },
-  {
     type: 'lightningspear',
     category: 'thrown',
     damage: 28,
@@ -65,19 +34,9 @@ const WEAPON_TEMPLATES: WeaponTemplate[] = [
     ammo: 3,
     rarity: 'common',
   },
-  {
-    type: 'icecrystal',
-    category: 'thrown',
-    damage: 20,
-    knockbackModifier: 1.4,
-    attackCooldown: 700,
-    durability: 0,
-    ammo: 2,
-    rarity: 'common',
-  },
 ];
 
-const POWERUP_TYPES: PowerupType[] = ['shieldsplitter', 'lifecore', 'forcefield'];
+const POWERUP_TYPES: PowerupType[] = ['forcefield'];
 
 // Rarity weights: common=60, uncommon=30, rare=10
 const RARITY_WEIGHTS: Record<WeaponItem['rarity'], number> = {
@@ -230,13 +189,7 @@ export class ItemSpawnManager {
   }
 
   private applyPowerup(player: Player, powerup: PowerupItem, now: number): void {
-    if (powerup.type === 'shieldsplitter') {
-      player.shieldSplitterUntil = now + 8000;
-    } else if (powerup.type === 'lifecore') {
-      // damageMitigation is a fraction [0, 1] that reduces incoming damage.
-      // E.g. 0.3 = 30% reduction. Multiple pickups stack additively, capped at 1.0 (full immunity).
-      player.damageMitigation = Math.min(1, (player.damageMitigation ?? 0) + 0.3);
-    } else if (powerup.type === 'forcefield') {
+    if (powerup.type === 'forcefield') {
       player.forceFieldUntil = now + 5000;
     }
   }
@@ -257,12 +210,12 @@ export class ItemSpawnManager {
         return null;
       }
 
-      const speed = weapon.type === 'lightningspear' ? LIGHTNINGSPEAR_SPEED : ICECRYSTAL_SPEED;
+      const speed = LIGHTNINGSPEAR_SPEED;
       const dir = player.facing === 'right' ? 1 : -1;
 
       const projectile: Projectile = {
         id: uuidv4(),
-        type: weapon.type as 'lightningspear' | 'icecrystal',
+        type: weapon.type as 'lightningspear',
         position: { x: player.position.x + PLAYER_WIDTH / 2, y: player.position.y + PLAYER_HEIGHT / 2 },
         velocity: { x: dir * speed, y: 0 },
         thrownBy: playerId,
@@ -323,11 +276,6 @@ export class ItemSpawnManager {
       proj.position.x += proj.velocity.x * dt;
       proj.position.y += proj.velocity.y * dt;
 
-      // Gravity for ice crystal
-      if (proj.type === 'icecrystal') {
-        proj.velocity.y += 300 * dt;
-      }
-
       // Check collision with players
       const thrower = match.players.find(p => p.id === proj.thrownBy);
       for (const target of match.players) {
@@ -350,11 +298,6 @@ export class ItemSpawnManager {
           const klen = Math.sqrt(kx * kx + ky * ky);
           target.velocity.x += (kx / klen) * magnitude;
           target.velocity.y += (ky / klen) * magnitude;
-
-          // Freeze effect from ice crystal
-          if (proj.type === 'icecrystal') {
-            target.freezeUntil = now + 2000;
-          }
 
           io.to(match.roomId).emit('player:hit', {
             results: [{ targetId: target.id, damage: baseDamage, knockback: { x: (kx / klen) * magnitude, y: (ky / klen) * magnitude }, blocked: false }],

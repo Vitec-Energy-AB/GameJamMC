@@ -12,7 +12,7 @@ export interface InputState {
 
 export interface WeaponItem {
   id: string;
-  type: 'steelclub' | 'lasergun' | 'fireaxe' | 'lightningspear' | 'icecrystal';
+  type: 'lightningspear';
   category: 'melee' | 'thrown';
   position: { x: number; y: number };
   pickedUpBy: string | null;
@@ -28,7 +28,7 @@ export interface WeaponItem {
 
 export interface PowerupItem {
   id: string;
-  type: 'shieldsplitter' | 'lifecore' | 'forcefield';
+  type: 'forcefield';
   position: { x: number; y: number };
   active: boolean;
   spawnTime: number;
@@ -38,7 +38,7 @@ export type SpawnedItem = WeaponItem | PowerupItem;
 
 export interface Projectile {
   id: string;
-  type: 'lightningspear' | 'icecrystal';
+  type: 'lightningspear';
   position: { x: number; y: number };
   velocity: { x: number; y: number };
   thrownBy: string;
