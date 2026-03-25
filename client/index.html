@@ -1342,56 +1342,150 @@
     ctx.restore();
   }
 
+  function platformPath(ctx, x, y, w, h, r) {
+    if (r > h / 2) r = h / 2;
+    if (r > w / 2) r = w / 2;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.arcTo(x + w, y, x + w, y + r, r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+    ctx.lineTo(x + r, y + h);
+    ctx.arcTo(x, y + h, x, y + h - r, r);
+    ctx.lineTo(x, y + r);
+    ctx.arcTo(x, y, x + r, y, r);
+    ctx.closePath();
+  }
+
   function drawPlatforms(platforms) {
     for (var i = 0; i < platforms.length; i++) {
       var p = platforms[i];
+      var r = Math.min(5, p.height / 2, p.width / 2);
       if (p.type === 'solid') {
-        // Try to use sprite if available
+        ctx.save();
+        // Drop shadow
+        ctx.shadowColor = 'rgba(0,0,0,0.45)';
+        ctx.shadowBlur = 10;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 4;
+
+        // Main body with rounded corners
+        platformPath(ctx, p.x, p.y, p.width, p.height, r);
         if (spritesLoaded && sprites['Tile_Platform'] && sprites['Tile_Platform'].complete) {
-          var sprite = sprites['Tile_Platform'];
-          // Tile the sprite across the platform
-          var pattern = ctx.createPattern(sprite, 'repeat');
+          var pattern = ctx.createPattern(sprites['Tile_Platform'], 'repeat');
           if (pattern) {
             ctx.fillStyle = pattern;
-            ctx.fillRect(p.x, p.y, p.width, p.height);
           } else {
-            // Fallback to gradient
             var grad = ctx.createLinearGradient(p.x, p.y, p.x, p.y + p.height);
-            grad.addColorStop(0, '#4a4e69');
+            grad.addColorStop(0, '#5c6080');
+            grad.addColorStop(0.5, '#4a4e69');
             grad.addColorStop(1, '#22223b');
             ctx.fillStyle = grad;
-            ctx.fillRect(p.x, p.y, p.width, p.height);
           }
         } else {
           var grad = ctx.createLinearGradient(p.x, p.y, p.x, p.y + p.height);
-          grad.addColorStop(0, '#4a4e69');
+          grad.addColorStop(0, '#5c6080');
+          grad.addColorStop(0.5, '#4a4e69');
           grad.addColorStop(1, '#22223b');
           ctx.fillStyle = grad;
-          ctx.fillRect(p.x, p.y, p.width, p.height);
         }
+        ctx.fill();
+        ctx.restore();
+
+        // Top highlight edge (beveled look)
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(p.x + r, p.y);
+        ctx.lineTo(p.x + p.width - r, p.y);
+        ctx.arcTo(p.x + p.width, p.y, p.x + p.width, p.y + r, r);
+        ctx.lineTo(p.x + p.width - 2, p.y + 5);
+        ctx.lineTo(p.x + 2, p.y + 5);
+        ctx.lineTo(p.x, p.y + r);
+        ctx.arcTo(p.x, p.y, p.x + r, p.y, r);
+        ctx.closePath();
+        var topGrad = ctx.createLinearGradient(p.x, p.y, p.x, p.y + 5);
+        topGrad.addColorStop(0, 'rgba(160,165,200,0.7)');
+        topGrad.addColorStop(1, 'rgba(108,111,139,0.0)');
+        ctx.fillStyle = topGrad;
+        ctx.fill();
+        ctx.restore();
+
+        // Bottom edge darkening
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y + p.height - r);
+        ctx.arcTo(p.x, p.y + p.height, p.x + r, p.y + p.height, r);
+        ctx.lineTo(p.x + p.width - r, p.y + p.height);
+        ctx.arcTo(p.x + p.width, p.y + p.height, p.x + p.width, p.y + p.height - r, r);
+        ctx.lineTo(p.x + p.width - 2, p.y + p.height - 4);
+        ctx.lineTo(p.x + 2, p.y + p.height - 4);
+        ctx.closePath();
+        var botGrad = ctx.createLinearGradient(p.x, p.y + p.height - 4, p.x, p.y + p.height);
+        botGrad.addColorStop(0, 'rgba(0,0,0,0.0)');
+        botGrad.addColorStop(1, 'rgba(0,0,0,0.25)');
+        ctx.fillStyle = botGrad;
+        ctx.fill();
+        ctx.restore();
+
+        // Outline
+        platformPath(ctx, p.x, p.y, p.width, p.height, r);
         ctx.strokeStyle = '#9a8c98';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(p.x, p.y, p.width, p.height);
-        ctx.fillStyle = '#6c6f8b';
-        ctx.fillRect(p.x, p.y, p.width, 4);
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
       } else {
-        // Try to use vegetable platform sprite
+        // Passthrough platform
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.3)';
+        ctx.shadowBlur = 6;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 3;
+
+        platformPath(ctx, p.x, p.y, p.width, p.height, r);
         if (spritesLoaded && sprites['Tile_Platform_vegetables'] && sprites['Tile_Platform_vegetables'].complete) {
-          var sprite = sprites['Tile_Platform_vegetables'];
-          var pattern = ctx.createPattern(sprite, 'repeat');
+          var pattern = ctx.createPattern(sprites['Tile_Platform_vegetables'], 'repeat');
           if (pattern) {
             ctx.fillStyle = pattern;
-            ctx.fillRect(p.x, p.y, p.width, p.height);
           } else {
-            ctx.fillStyle = '#c9a227';
-            ctx.fillRect(p.x, p.y, p.width, p.height);
+            var grad = ctx.createLinearGradient(p.x, p.y, p.x, p.y + p.height);
+            grad.addColorStop(0, '#dbb534');
+            grad.addColorStop(0.5, '#c9a227');
+            grad.addColorStop(1, '#a88520');
+            ctx.fillStyle = grad;
           }
         } else {
-          ctx.fillStyle = '#c9a227';
-          ctx.fillRect(p.x, p.y, p.width, p.height);
+          var grad = ctx.createLinearGradient(p.x, p.y, p.x, p.y + p.height);
+          grad.addColorStop(0, '#dbb534');
+          grad.addColorStop(0.5, '#c9a227');
+          grad.addColorStop(1, '#a88520');
+          ctx.fillStyle = grad;
         }
-        ctx.fillStyle = '#ffd166';
-        ctx.fillRect(p.x, p.y, p.width, 5);
+        ctx.fill();
+        ctx.restore();
+
+        // Top highlight
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(p.x + r, p.y);
+        ctx.lineTo(p.x + p.width - r, p.y);
+        ctx.arcTo(p.x + p.width, p.y, p.x + p.width, p.y + r, r);
+        ctx.lineTo(p.x + p.width - 2, p.y + 4);
+        ctx.lineTo(p.x + 2, p.y + 4);
+        ctx.lineTo(p.x, p.y + r);
+        ctx.arcTo(p.x, p.y, p.x + r, p.y, r);
+        ctx.closePath();
+        var topGrad = ctx.createLinearGradient(p.x, p.y, p.x, p.y + 4);
+        topGrad.addColorStop(0, 'rgba(255,220,120,0.8)');
+        topGrad.addColorStop(1, 'rgba(255,209,102,0.0)');
+        ctx.fillStyle = topGrad;
+        ctx.fill();
+        ctx.restore();
+
+        // Outline
+        platformPath(ctx, p.x, p.y, p.width, p.height, r);
+        ctx.strokeStyle = 'rgba(168,133,32,0.5)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
       }
     }
   }
@@ -1401,30 +1495,60 @@
     for (var i = 0; i < movingPlatforms.length; i++) {
       var mp = movingPlatforms[i];
       var p = mp.platform;
+      var r = Math.min(5, p.height / 2, p.width / 2);
 
-      // Try to use sprite if available
+      ctx.save();
+      // Glow effect for moving platforms
+      ctx.shadowColor = 'rgba(41,128,185,0.5)';
+      ctx.shadowBlur = 12;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+
+      platformPath(ctx, p.x, p.y, p.width, p.height, r);
       if (spritesLoaded && sprites['Tile_MovingPlatform'] && sprites['Tile_MovingPlatform'].complete) {
-        var sprite = sprites['Tile_MovingPlatform'];
-        var pattern = ctx.createPattern(sprite, 'repeat');
+        var pattern = ctx.createPattern(sprites['Tile_MovingPlatform'], 'repeat');
         if (pattern) {
           ctx.fillStyle = pattern;
-          ctx.fillRect(p.x, p.y, p.width, p.height);
         } else {
-          // Fallback to gradient
-          ctx.fillStyle = '#2980b9';
-          ctx.fillRect(p.x, p.y, p.width, p.height);
+          var grad = ctx.createLinearGradient(p.x, p.y, p.x, p.y + p.height);
+          grad.addColorStop(0, '#3498db');
+          grad.addColorStop(0.5, '#2980b9');
+          grad.addColorStop(1, '#1a5276');
+          ctx.fillStyle = grad;
         }
       } else {
-        // Fallback when sprite not loaded
-        ctx.fillStyle = '#2980b9';
-        ctx.fillRect(p.x, p.y, p.width, p.height);
+        var grad = ctx.createLinearGradient(p.x, p.y, p.x, p.y + p.height);
+        grad.addColorStop(0, '#3498db');
+        grad.addColorStop(0.5, '#2980b9');
+        grad.addColorStop(1, '#1a5276');
+        ctx.fillStyle = grad;
       }
+      ctx.fill();
+      ctx.restore();
 
-      ctx.fillStyle = '#5dade2';
-      ctx.fillRect(p.x, p.y, p.width, 5);
+      // Top highlight
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(p.x + r, p.y);
+      ctx.lineTo(p.x + p.width - r, p.y);
+      ctx.arcTo(p.x + p.width, p.y, p.x + p.width, p.y + r, r);
+      ctx.lineTo(p.x + p.width - 2, p.y + 4);
+      ctx.lineTo(p.x + 2, p.y + 4);
+      ctx.lineTo(p.x, p.y + r);
+      ctx.arcTo(p.x, p.y, p.x + r, p.y, r);
+      ctx.closePath();
+      var topGrad = ctx.createLinearGradient(p.x, p.y, p.x, p.y + 4);
+      topGrad.addColorStop(0, 'rgba(93,173,226,0.8)');
+      topGrad.addColorStop(1, 'rgba(93,173,226,0.0)');
+      ctx.fillStyle = topGrad;
+      ctx.fill();
+      ctx.restore();
+
+      // Outline
+      platformPath(ctx, p.x, p.y, p.width, p.height, r);
       ctx.strokeStyle = '#1a5276';
       ctx.lineWidth = 1;
-      ctx.strokeRect(p.x, p.y, p.width, p.height);
+      ctx.stroke();
     }
   }
 
@@ -1436,29 +1560,103 @@
       if (cp.state === 'gone') continue;
       var p = cp.def ? cp.def.platform : cp.platform;
       if (!p) continue;
-      var alpha = cp.state === 'crumbling' ? 0.5 : 1.0;
+      var isCrumbling = cp.state === 'crumbling';
+      var alpha = isCrumbling ? 0.5 : 1.0;
+      var r = Math.min(5, p.height / 2, p.width / 2);
       ctx.globalAlpha = alpha;
 
-      // Try to use sprite if available
+      ctx.save();
+      // Shadow / warning glow when crumbling
+      if (isCrumbling) {
+        ctx.shadowColor = 'rgba(231,76,60,0.6)';
+        ctx.shadowBlur = 14;
+      } else {
+        ctx.shadowColor = 'rgba(0,0,0,0.3)';
+        ctx.shadowBlur = 6;
+        ctx.shadowOffsetY = 3;
+      }
+      ctx.shadowOffsetX = 0;
+
+      platformPath(ctx, p.x, p.y, p.width, p.height, r);
       if (spritesLoaded && sprites['Tile_CrumblingPlatform'] && sprites['Tile_CrumblingPlatform'].complete) {
-        var sprite = sprites['Tile_CrumblingPlatform'];
-        var pattern = ctx.createPattern(sprite, 'repeat');
+        var pattern = ctx.createPattern(sprites['Tile_CrumblingPlatform'], 'repeat');
         if (pattern) {
           ctx.fillStyle = pattern;
-          ctx.fillRect(p.x, p.y, p.width, p.height);
         } else {
-          // Fallback to solid color
-          ctx.fillStyle = cp.state === 'crumbling' ? '#e74c3c' : '#8e44ad';
-          ctx.fillRect(p.x, p.y, p.width, p.height);
+          var grad = ctx.createLinearGradient(p.x, p.y, p.x, p.y + p.height);
+          if (isCrumbling) {
+            grad.addColorStop(0, '#e74c3c');
+            grad.addColorStop(1, '#c0392b');
+          } else {
+            grad.addColorStop(0, '#9b59b6');
+            grad.addColorStop(0.5, '#8e44ad');
+            grad.addColorStop(1, '#6c3483');
+          }
+          ctx.fillStyle = grad;
         }
       } else {
-        // Fallback when sprite not loaded
-        ctx.fillStyle = cp.state === 'crumbling' ? '#e74c3c' : '#8e44ad';
-        ctx.fillRect(p.x, p.y, p.width, p.height);
+        var grad = ctx.createLinearGradient(p.x, p.y, p.x, p.y + p.height);
+        if (isCrumbling) {
+          grad.addColorStop(0, '#e74c3c');
+          grad.addColorStop(1, '#c0392b');
+        } else {
+          grad.addColorStop(0, '#9b59b6');
+          grad.addColorStop(0.5, '#8e44ad');
+          grad.addColorStop(1, '#6c3483');
+        }
+        ctx.fillStyle = grad;
+      }
+      ctx.fill();
+      ctx.restore();
+
+      // Top highlight
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.beginPath();
+      ctx.moveTo(p.x + r, p.y);
+      ctx.lineTo(p.x + p.width - r, p.y);
+      ctx.arcTo(p.x + p.width, p.y, p.x + p.width, p.y + r, r);
+      ctx.lineTo(p.x + p.width - 2, p.y + 4);
+      ctx.lineTo(p.x + 2, p.y + 4);
+      ctx.lineTo(p.x, p.y + r);
+      ctx.arcTo(p.x, p.y, p.x + r, p.y, r);
+      ctx.closePath();
+      var topCol = isCrumbling ? 'rgba(255,118,117,' : 'rgba(165,105,189,';
+      var topGrad = ctx.createLinearGradient(p.x, p.y, p.x, p.y + 4);
+      topGrad.addColorStop(0, topCol + '0.8)');
+      topGrad.addColorStop(1, topCol + '0.0)');
+      ctx.fillStyle = topGrad;
+      ctx.fill();
+      ctx.restore();
+
+      // Crack lines when crumbling
+      if (isCrumbling) {
+        ctx.save();
+        ctx.globalAlpha = alpha * 0.7;
+        ctx.strokeStyle = '#2c0b0b';
+        ctx.lineWidth = 1.5;
+        var cx = p.x + p.width * 0.5;
+        var cy = p.y + p.height * 0.5;
+        ctx.beginPath();
+        ctx.moveTo(cx - p.width * 0.15, p.y + 2);
+        ctx.lineTo(cx, cy);
+        ctx.lineTo(cx + p.width * 0.1, p.y + p.height - 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cx + p.width * 0.2, p.y + 2);
+        ctx.lineTo(cx + p.width * 0.05, cy + 1);
+        ctx.lineTo(cx + p.width * 0.25, p.y + p.height - 2);
+        ctx.stroke();
+        ctx.restore();
       }
 
-      ctx.fillStyle = cp.state === 'crumbling' ? '#ff7675' : '#a569bd';
-      ctx.fillRect(p.x, p.y, p.width, 5);
+      // Outline
+      platformPath(ctx, p.x, p.y, p.width, p.height, r);
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = isCrumbling ? 'rgba(192,57,43,0.6)' : 'rgba(108,52,131,0.5)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
       ctx.globalAlpha = 1.0;
     }
   }

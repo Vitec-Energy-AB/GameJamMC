@@ -14,10 +14,49 @@ export class Renderer {
     this.ctx.fillRect(0, 0, 1200, 700);
   }
 
+  private platformPath(x: number, y: number, w: number, h: number, r: number): void {
+    if (r > h / 2) r = h / 2;
+    if (r > w / 2) r = w / 2;
+    this.ctx.beginPath();
+    this.ctx.moveTo(x + r, y);
+    this.ctx.lineTo(x + w - r, y);
+    this.ctx.arcTo(x + w, y, x + w, y + r, r);
+    this.ctx.lineTo(x + w, y + h - r);
+    this.ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+    this.ctx.lineTo(x + r, y + h);
+    this.ctx.arcTo(x, y + h, x, y + h - r, r);
+    this.ctx.lineTo(x, y + r);
+    this.ctx.arcTo(x, y, x + r, y, r);
+    this.ctx.closePath();
+  }
+
   drawPlatforms(platforms: Platform[]): void {
     for (const p of platforms) {
-      this.ctx.fillStyle = p.type === 'solid' ? '#4a4e69' : '#c9a227';
-      this.ctx.fillRect(p.x, p.y, p.width, p.height);
+      const r = Math.min(5, p.height / 2, p.width / 2);
+      this.ctx.save();
+      this.ctx.shadowColor = 'rgba(0,0,0,0.35)';
+      this.ctx.shadowBlur = 8;
+      this.ctx.shadowOffsetY = 3;
+      this.platformPath(p.x, p.y, p.width, p.height, r);
+      if (p.type === 'solid') {
+        const grad = this.ctx.createLinearGradient(p.x, p.y, p.x, p.y + p.height);
+        grad.addColorStop(0, '#5c6080');
+        grad.addColorStop(0.5, '#4a4e69');
+        grad.addColorStop(1, '#22223b');
+        this.ctx.fillStyle = grad;
+      } else {
+        const grad = this.ctx.createLinearGradient(p.x, p.y, p.x, p.y + p.height);
+        grad.addColorStop(0, '#dbb534');
+        grad.addColorStop(0.5, '#c9a227');
+        grad.addColorStop(1, '#a88520');
+        this.ctx.fillStyle = grad;
+      }
+      this.ctx.fill();
+      this.ctx.restore();
+      this.platformPath(p.x, p.y, p.width, p.height, r);
+      this.ctx.strokeStyle = p.type === 'solid' ? '#9a8c98' : 'rgba(168,133,32,0.5)';
+      this.ctx.lineWidth = 1;
+      this.ctx.stroke();
     }
   }
 
