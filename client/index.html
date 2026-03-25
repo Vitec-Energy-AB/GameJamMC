@@ -954,8 +954,10 @@
 
     socket.on('room:update', function(match) {
       console.log('[Bot] Room update received', { playerCount: match.players.length, botCount: match.players.filter(function(p) { return p.isBot; }).length });
+      console.log('[Bot] Players in match:', match.players.map(function(p) { return { id: p.id, name: p.name, isBot: p.isBot }; }));
       currentMatch = match;
       updatePlayerList(match.players);
+      console.log('[Bot] updatePlayerList completed');
     });
 
     socket.on('match:countdown', function(data) {
@@ -1224,29 +1226,51 @@
   })();
 
   function escHtml(str) {
+    if (!str) return '';
     return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
   function updatePlayerList(players) {
-    playerListDiv.innerHTML = '<div style="color:#aaa;font-size:0.85rem;margin-bottom:6px;">Players in Room:</div>';
-    players.forEach(function(p) {
-      var el = document.createElement('div');
-      el.className = 'player-entry';
-      var isReady = p.status === 'ready' || p.status === 'alive';
-      var stars = '';
-      if (p.isBot && p.botDifficulty) {
-        for (var s = 0; s < 5; s++) {
-          stars += s < p.botDifficulty ? '★' : '☆';
+    console.log('[PlayerList] updatePlayerList called with', players ? players.length : 'null/undefined', 'players');
+    if (!playerListDiv) {
+      console.error('[PlayerList] playerListDiv element not found');
+      return;
+    }
+    if (!players || !Array.isArray(players)) {
+      console.error('[PlayerList] Invalid players array', players);
+      return;
+    }
+    try {
+      playerListDiv.innerHTML = '<div style="color:#aaa;font-size:0.85rem;margin-bottom:6px;">Players in Room:</div>';
+      console.log('[PlayerList] Starting to render', players.length, 'players');
+      players.forEach(function(p, index) {
+        try {
+          console.log('[PlayerList] Rendering player', index, ':', p.id, p.name, 'isBot:', p.isBot);
+          var el = document.createElement('div');
+          el.className = 'player-entry';
+          var isReady = p.status === 'ready' || p.status === 'alive';
+          var stars = '';
+          if (p.isBot && p.botDifficulty) {
+            for (var s = 0; s < 5; s++) {
+              stars += s < p.botDifficulty ? '★' : '☆';
+            }
+          }
+          var nameLabel = (p.isBot ? '🤖 ' : '') + escHtml(p.name) + (p.id === localPlayerId ? ' (you)' : '');
+          if (p.isBot && stars) nameLabel += ' <span style="color:#f39c12;font-size:0.7rem;">' + stars + '</span>';
+          el.innerHTML =
+            '<div class="player-dot" style="background:' + (p.color || '#888') + '"></div>' +
+            '<span>' + nameLabel + '</span>' +
+            '<span class="ready-badge ' + (isReady ? 'ready-yes' : 'ready-no') + '">' + (isReady ? 'Ready' : 'Waiting') + '</span>';
+          playerListDiv.appendChild(el);
+          console.log('[PlayerList] Player', index, 'rendered successfully');
+        } catch (error) {
+          console.error('[PlayerList] Error rendering player:', p, error);
         }
-      }
-      var nameLabel = (p.isBot ? '🤖 ' : '') + escHtml(p.name) + (p.id === localPlayerId ? ' (you)' : '');
-      if (p.isBot && stars) nameLabel += ' <span style="color:#f39c12;font-size:0.7rem;">' + stars + '</span>';
-      el.innerHTML =
-        '<div class="player-dot" style="background:' + (p.color || '#888') + '"></div>' +
-        '<span>' + nameLabel + '</span>' +
-        '<span class="ready-badge ' + (isReady ? 'ready-yes' : 'ready-no') + '">' + (isReady ? 'Ready' : 'Waiting') + '</span>';
-      playerListDiv.appendChild(el);
-    });
+      });
+      console.log('[PlayerList] All players rendered, total in DOM:', playerListDiv.children.length);
+    } catch (error) {
+      console.error('[PlayerList] Error updating player list:', error);
+    }
   }
 
   // ── Interpolation ─────────────────────────────────────────────────────────
