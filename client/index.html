@@ -523,6 +523,11 @@
   var pickupPressed = false;
   var useWeaponPressed = false;
   var explosions = [];
+  var lavaSplashes = [];   // splash effects when a player hits lava
+  var lavaBubbles = [];    // animated bubbles on lava surface
+  var lavaEmbers = [];     // ember particles floating up from lava
+  var lastBubbleSpawnTime = 0;  // tracks last bubble spawn for time-based spawning
+  var lastEmberSpawnTime = 0;   // tracks last ember spawn for time-based spawning
   var availableMaps = [];
   var myMapVote = null;
   var selectedCharacter = 'bjork';
@@ -1029,6 +1034,26 @@
     socket.on('bomb:explode', function(data) {
       explosions.push({ position: data.position, startTime: Date.now(), duration: 600, radius: 120 });
       sounds.explosion();
+    });
+
+    socket.on('player:lava', function(data) {
+      // Splash: orange/red droplets spraying upward + ripple ring on lava surface
+      var now = Date.now();
+      lavaSplashes.push({
+        x: data.x || 0,
+        y: data.lavaY,
+        startTime: now,
+        duration: 500,
+        particles: (function() {
+          var pts = [];
+          for (var i = 0; i < 12; i++) {
+            var angle = -Math.PI + (Math.random() * Math.PI);  // upward half-circle
+            var speed = 80 + Math.random() * 180;
+            pts.push({ vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - 60 });
+          }
+          return pts;
+        })()
+      });
     });
 
     socket.on('platforms:generated', function(data) {
@@ -1659,6 +1684,22 @@
         ctx.strokeRect(x - 4, y - 4, PLAYER_W + 8, PLAYER_H + 8);
       }
 
+      // Lava tint: red/orange overlay when player is in lava
+      if (currentLavaY !== null && (p.position.y + PLAYER_H) >= currentLavaY) {
+        ctx.save();
+        ctx.globalAlpha = 0.45 + 0.2 * Math.sin(now * 0.008);
+        ctx.fillStyle = 'rgba(255, 80, 0, 1)';
+        ctx.fillRect(x, y, PLAYER_W, PLAYER_H);
+        // Heat shimmer glow around player
+        ctx.globalAlpha = 0.25 + 0.15 * Math.sin(now * 0.012);
+        ctx.shadowColor = 'rgba(255, 140, 0, 1)';
+        ctx.shadowBlur = 20;
+        ctx.strokeStyle = 'rgba(255, 160, 0, 1)';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(x - 4, y - 4, PLAYER_W + 8, PLAYER_H + 8);
+        ctx.restore();
+      }
+
       if (p.id === localId) {
         // Green downward-pointing arrow bobbing above player's head
         var bob = Math.sin(now * 0.004) * 4;
@@ -1836,6 +1877,45 @@
     }
   }
 
+  function drawLavaSplashes(now) {
+    for (var i = lavaSplashes.length - 1; i >= 0; i--) {
+      var sp = lavaSplashes[i];
+      var t = (now - sp.startTime) / sp.duration;
+      if (t >= 1) { lavaSplashes.splice(i, 1); continue; }
+
+      var elapsed = (now - sp.startTime) / 1000;
+      var alpha = 1 - t;
+
+      // Draw ripple ring expanding outward
+      ctx.save();
+      ctx.globalAlpha = alpha * 0.7;
+      ctx.strokeStyle = 'rgba(255, 140, 0, 1)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.ellipse(sp.x, sp.y, 60 * t, 15 * t, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+
+      // Draw droplet particles
+      for (var j = 0; j < sp.particles.length; j++) {
+        var pt = sp.particles[j];
+        var px = sp.x + pt.vx * elapsed;
+        var py = sp.y + pt.vy * elapsed + 0.5 * 400 * elapsed * elapsed; // gravity
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        var r = 4 * (1 - t * 0.5);
+        var grad = ctx.createRadialGradient(px, py, 0, px, py, r);
+        grad.addColorStop(0, 'rgba(255, 220, 50, 1)');
+        grad.addColorStop(1, 'rgba(255, 60, 0, 0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(px, py, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+  }
+
   function drawHUD(state) {
     if (!currentMatch) return;
     var players = state ? state.players : (currentMatch.players || []);
@@ -2010,24 +2090,134 @@
       drawItems(currentMatch.items);
     }
 
-    // Draw rising lava (world-space)
+    // Draw rising lava (world-space) — improved visuals
     if (currentLavaY !== null) {
       var worldBottom = CANVAS_H + 200;
-      var lavaGradient = ctx.createLinearGradient(0, currentLavaY, 0, worldBottom);
-      lavaGradient.addColorStop(0, 'rgba(255, 80, 0, 0.9)');
-      lavaGradient.addColorStop(0.3, 'rgba(255, 40, 0, 0.85)');
-      lavaGradient.addColorStop(1, 'rgba(180, 0, 0, 0.8)');
-      ctx.fillStyle = lavaGradient;
-      ctx.fillRect(-CANVAS_W, currentLavaY, CANVAS_W * 3, worldBottom - currentLavaY);
+      var lavaLeft = -CANVAS_W;
+      var lavaWidth = CANVAS_W * 3;
 
-      ctx.strokeStyle = 'rgba(255, 200, 50, ' + (0.6 + Math.sin(now / 200) * 0.3) + ')';
-      ctx.lineWidth = 3;
+      // ── Main lava body with vivid gradient ──────────────────────────────────
+      var lavaGradient = ctx.createLinearGradient(0, currentLavaY, 0, worldBottom);
+      lavaGradient.addColorStop(0,   'rgba(255, 120, 0, 1.0)');
+      lavaGradient.addColorStop(0.1, 'rgba(255, 60,  0, 0.97)');
+      lavaGradient.addColorStop(0.4, 'rgba(220, 20,  0, 0.95)');
+      lavaGradient.addColorStop(1,   'rgba(140, 0,   0, 0.92)');
+      ctx.fillStyle = lavaGradient;
+
+      // Build a surface path using multiple overlaid sine waves for organic edge
       ctx.beginPath();
-      ctx.moveTo(-CANVAS_W, currentLavaY);
-      for (var lx = -CANVAS_W; lx < CANVAS_W * 2; lx += 20) {
-        ctx.lineTo(lx, currentLavaY + Math.sin((lx + now / 100) * 0.05) * 4);
+      ctx.moveTo(lavaLeft, currentLavaY);
+      for (var lx = lavaLeft; lx <= lavaLeft + lavaWidth; lx += 8) {
+        var wave1 = Math.sin((lx * 0.04) + now / 300)  * 6;
+        var wave2 = Math.sin((lx * 0.015) + now / 180) * 10;
+        var wave3 = Math.sin((lx * 0.008) + now / 500) * 5;
+        ctx.lineTo(lx, currentLavaY + wave1 + wave2 + wave3);
+      }
+      ctx.lineTo(lavaLeft + lavaWidth, worldBottom);
+      ctx.lineTo(lavaLeft, worldBottom);
+      ctx.closePath();
+      ctx.fill();
+
+      // ── Glow/bloom overlay above lava surface ───────────────────────────────
+      var glowHeight = 80;
+      var glowGrad = ctx.createLinearGradient(0, currentLavaY - glowHeight, 0, currentLavaY);
+      glowGrad.addColorStop(0,   'rgba(255, 80,  0, 0)');
+      glowGrad.addColorStop(0.6, 'rgba(255, 100, 0, 0.08)');
+      glowGrad.addColorStop(1,   'rgba(255, 140, 0, 0.35)');
+      ctx.fillStyle = glowGrad;
+      ctx.fillRect(lavaLeft, currentLavaY - glowHeight, lavaWidth, glowHeight);
+
+      // ── Bright pulsing surface edge ──────────────────────────────────────────
+      var edgePulse = 0.7 + Math.sin(now / 180) * 0.3;
+      ctx.strokeStyle = 'rgba(255, 210, 50, ' + edgePulse + ')';
+      ctx.lineWidth = 4;
+      ctx.shadowColor = 'rgba(255, 160, 0, 0.9)';
+      ctx.shadowBlur = 14;
+      ctx.beginPath();
+      ctx.moveTo(lavaLeft, currentLavaY);
+      for (var lx2 = lavaLeft; lx2 <= lavaLeft + lavaWidth; lx2 += 8) {
+        var w1 = Math.sin((lx2 * 0.04) + now / 300)  * 6;
+        var w2 = Math.sin((lx2 * 0.015) + now / 180) * 10;
+        var w3 = Math.sin((lx2 * 0.008) + now / 500) * 5;
+        ctx.lineTo(lx2, currentLavaY + w1 + w2 + w3);
       }
       ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // ── Animated bubbles on lava surface ────────────────────────────────────
+      // Spawn new bubbles using time-based interval (frame-rate independent)
+      if (lavaBubbles.length < 20 && now - lastBubbleSpawnTime > 400) {
+        lastBubbleSpawnTime = now;
+        lavaBubbles.push({
+          x: lavaLeft + Math.random() * lavaWidth,
+          spawnTime: now,
+          duration: 600 + Math.random() * 800,
+          maxRadius: 6 + Math.random() * 12,
+          depth: 5 + Math.random() * 30,
+        });
+      }
+      for (var bi = lavaBubbles.length - 1; bi >= 0; bi--) {
+        var bub = lavaBubbles[bi];
+        var bt = (now - bub.spawnTime) / bub.duration;
+        if (bt >= 1) { lavaBubbles.splice(bi, 1); continue; }
+        var br = bub.maxRadius * Math.min(bt * 3, 1);  // grow fast then hold
+        var surfW1 = Math.sin((bub.x * 0.04) + now / 300)  * 6;
+        var surfW2 = Math.sin((bub.x * 0.015) + now / 180) * 10;
+        var surfW3 = Math.sin((bub.x * 0.008) + now / 500) * 5;
+        var bubY = currentLavaY + surfW1 + surfW2 + surfW3 + bub.depth * (1 - bt);
+        ctx.save();
+        ctx.globalAlpha = bt > 0.8 ? (1 - bt) * 5 : 1;  // fade out when popping
+        ctx.strokeStyle = 'rgba(255, 200, 80, 0.9)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(bub.x, bubY, br, 0, Math.PI * 2);
+        ctx.stroke();
+        if (bt > 0.85) {
+          // Popping burst
+          ctx.globalAlpha = (1 - bt) * 3;
+          ctx.strokeStyle = 'rgba(255, 240, 100, 1)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(bub.x, bubY, br * 2, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      // ── Ember/spark particles floating upward ────────────────────────────────
+      // Spawn embers at a consistent rate (frame-rate independent, ~every 80ms)
+      if (lavaEmbers.length < 30 && now - lastEmberSpawnTime > 80) {
+        lastEmberSpawnTime = now;
+        lavaEmbers.push({
+          x: lavaLeft + Math.random() * lavaWidth,
+          y: currentLavaY,
+          vx: (Math.random() - 0.5) * 40,
+          vy: -(30 + Math.random() * 80),
+          spawnTime: now,
+          duration: 800 + Math.random() * 1200,
+          size: 2 + Math.random() * 3,
+        });
+      }
+      for (var ei = lavaEmbers.length - 1; ei >= 0; ei--) {
+        var em = lavaEmbers[ei];
+        var et = (now - em.spawnTime) / em.duration;
+        if (et >= 1) { lavaEmbers.splice(ei, 1); continue; }
+        var elapsed2 = (now - em.spawnTime) / 1000;
+        var ex2 = em.x + em.vx * elapsed2;
+        var ey2 = em.y + em.vy * elapsed2;
+        ctx.save();
+        ctx.globalAlpha = (1 - et) * 0.9;
+        ctx.fillStyle = et < 0.5 ? 'rgba(255, 220, 50, 1)' : 'rgba(255, 80, 0, 1)';
+        ctx.shadowColor = 'rgba(255, 150, 0, 0.8)';
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.arc(ex2, ey2, em.size * (1 - et * 0.5), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // ── Splash effects ───────────────────────────────────────────────────────
+      drawLavaSplashes(now);
     }
 
     if (state) {
