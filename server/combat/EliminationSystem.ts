@@ -28,8 +28,18 @@ export function eliminatePlayer(player: Player, match: Match, io: Server): void 
   }
 }
 
-export function respawnPlayer(player: Player, spawnPoints: { x: number; y: number }[]): void {
-  const spawn = spawnPoints[Math.floor(Math.random() * spawnPoints.length)];
+export function respawnPlayer(player: Player, spawnPoints: { x: number; y: number }[], lavaY?: number): void {
+  let candidates = spawnPoints;
+  if (lavaY !== undefined) {
+    const safePoints = spawnPoints.filter(sp => sp.y + PLAYER_HEIGHT < lavaY);
+    if (safePoints.length > 0) {
+      candidates = safePoints;
+    } else {
+      // All spawn points are submerged – pick the highest one (lowest y value)
+      candidates = [spawnPoints.reduce((best, sp) => sp.y < best.y ? sp : best, spawnPoints[0])];
+    }
+  }
+  const spawn = candidates[Math.floor(Math.random() * candidates.length)];
   player.position = { x: spawn.x, y: spawn.y };
   player.velocity = { x: 0, y: 0 };
   player.status = 'alive';

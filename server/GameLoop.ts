@@ -77,7 +77,8 @@ export class GameLoop {
           // Handle respawning
           if (player.status === 'respawning' && player.respawnTimer !== undefined) {
             if (now >= player.respawnTimer) {
-              respawnPlayer(player, match.map.spawnPoints);
+              const lavaY = match.lavaState?.active ? match.lavaState.currentY : undefined;
+              respawnPlayer(player, match.map.spawnPoints, lavaY);
               io.to(roomId).emit('player:respawn', { playerId: player.id, position: player.position });
             }
           }
