@@ -110,6 +110,7 @@ export interface Player {
   isDucking?: boolean;
   duckStartTime?: number;
   inLava?: boolean;
+  hitStunUntil?: number;
 }
 
 export interface Bomb {

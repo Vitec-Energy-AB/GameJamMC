@@ -55,6 +55,8 @@ export function performAttack(attacker: Player, targets: Player[], weaponOverrid
         target.velocity.x += knockback.x;
         target.velocity.y += knockback.y;
         target.invulnerableUntil = now + 1000;
+        const knockbackMagnitude = Math.sqrt(knockback.x * knockback.x + knockback.y * knockback.y);
+        target.hitStunUntil = now + 200 + Math.min(knockbackMagnitude * 0.5, 400);
       } else {
         // Reduced knockback when blocking
         target.velocity.x += knockback.x * 0.2;
