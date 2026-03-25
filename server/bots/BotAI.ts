@@ -111,8 +111,7 @@ export function evaluate(bot: Player, match: Match, now: number): void {
   const safetyNearEdge =
     bot.position.x < bz.left + BLAST_ZONE_MARGIN ||
     bot.position.x > bz.right - BLAST_ZONE_MARGIN ||
-    bot.position.y > bz.bottom - BLAST_ZONE_MARGIN ||
-    bot.position.y < bz.top + BLAST_ZONE_MARGIN;
+    bot.position.y > bz.bottom - BLAST_ZONE_MARGIN;
 
   const lavaActive = match.lavaState?.active ?? false;
   const lavaY = match.lavaState?.currentY ?? Infinity;

@@ -173,7 +173,11 @@ export class GameLoop {
       updateLava(match, dt, io);
 
       // Update platform generation
-      updatePlatformGeneration(match, io);
+      const activePlayers = match.players.filter(p => p.status === 'alive' || p.status === 'respawning');
+      const highestPlayerY = activePlayers.length > 0
+        ? Math.min(...activePlayers.map(p => p.position.y))
+        : 600; // fallback to typical spawn area when no active players
+      updatePlatformGeneration(match, io, highestPlayerY);
 
       // Update bombs
       for (let i = match.bombs.length - 1; i >= 0; i--) {
