@@ -126,6 +126,17 @@
     #leaderboardTable tr:nth-child(2) td:first-child { color: #c0c0c0; }
     #leaderboardTable tr:nth-child(3) td:first-child { color: #cd7f32; }
     #leaderboardStatus { color: #888; font-size: 0.8rem; text-align: center; margin-top: 6px; min-height: 16px; }
+    /* ── Lobby Leaderboard ───────────────────────────────────────────────── */
+    #lobbyLeaderboardSection { margin-top: 20px; width: 100%; max-width: 100%; }
+    #lobbyLeaderboardSection h3 { color: #f39c12; font-size: 0.95rem; margin-bottom: 8px; text-align: center; }
+    #lobbyLeaderboardTable { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    #lobbyLeaderboardTable th { color: #aaa; font-weight: normal; padding: 3px 6px; border-bottom: 1px solid #0f3460; text-align: left; font-size: 0.75rem; }
+    #lobbyLeaderboardTable td { padding: 4px 6px; border-bottom: 1px solid #0d2040; }
+    #lobbyLeaderboardTable tr.lb-me td { color: #f39c12; font-weight: bold; }
+    #lobbyLeaderboardTable tr:nth-child(1) td:first-child { color: #ffd700; font-weight: bold; }
+    #lobbyLeaderboardTable tr:nth-child(2) td:first-child { color: #c0c0c0; font-weight: bold; }
+    #lobbyLeaderboardTable tr:nth-child(3) td:first-child { color: #cd7f32; font-weight: bold; }
+    #lobbyLeaderboardStatus { color: #888; font-size: 0.75rem; text-align: center; margin-top: 4px; min-height: 14px; }
     /* ── Nickname hint ────────────────────────────────────────────────────── */
     #nameHint { font-size: 0.78rem; color: #888; margin-top: 3px; min-height: 16px; }
   </style>
@@ -202,6 +213,21 @@
 
     <div id="controls">
       Move: &larr; &rarr; (or A D) &nbsp;|&nbsp; Jump: &uarr; / W / Space &nbsp;|&nbsp; Duck: &darr; / S (hold 2s to drop) &nbsp;|&nbsp; Attack: Z &nbsp;|&nbsp; Block: C &nbsp;|&nbsp; Throw Bomb: B &nbsp;|&nbsp; Pickup Item: E &nbsp;|&nbsp; Use Weapon: Q / X &nbsp;|&nbsp; Music: M
+    </div>
+
+    <div id="lobbyLeaderboardSection">
+      <h3>&#x1F3C6; Top 10 Leaderboard</h3>
+      <table id="lobbyLeaderboardTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Player</th>
+            <th>Score</th>
+          </tr>
+        </thead>
+        <tbody id="lobbyLeaderboardBody"></tbody>
+      </table>
+      <div id="lobbyLeaderboardStatus">Loading leaderboard...</div>
     </div>
   </div>
 </div>
@@ -314,6 +340,35 @@
       })
       .catch(function(err) {
         console.warn('[leaderboard] Fetch failed:', err);
+        if (status) status.textContent = 'Could not load leaderboard.';
+      });
+  }
+
+  function fetchLobbyLeaderboard() {
+    var status = document.getElementById('lobbyLeaderboardStatus');
+    var tbody = document.getElementById('lobbyLeaderboardBody');
+    if (status) status.textContent = 'Loading leaderboard\u2026';
+    if (tbody) tbody.innerHTML = '';
+    fetch('/api/leaderboard?limit=10')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (!data.entries || !data.entries.length) {
+          if (status) status.textContent = 'No entries yet \u2013 be the first!';
+          return;
+        }
+        if (status) status.textContent = '';
+        if (!tbody) return;
+        data.entries.forEach(function(e, idx) {
+          var tr = document.createElement('tr');
+          tr.innerHTML =
+            '<td>' + (idx + 1) + '</td>' +
+            '<td>' + escHtml(e.name) + '</td>' +
+            '<td>' + e.score + '</td>';
+          tbody.appendChild(tr);
+        });
+      })
+      .catch(function(err) {
+        console.warn('[lobby-leaderboard] Fetch failed:', err);
         if (status) status.textContent = 'Could not load leaderboard.';
       });
   }
@@ -1757,6 +1812,9 @@
   loadSprites(function() {
     console.log('Sprites loaded successfully');
   });
+
+  // Fetch lobby leaderboard on page load
+  fetchLobbyLeaderboard();
 
   connectSocket();
   gameLoop();
