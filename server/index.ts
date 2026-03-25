@@ -87,9 +87,16 @@ io.on('connection', (socket) => {
   });
 
   socket.on('room:create', (data: { name: string; displayName?: string }) => {
-    const roomId = roomManager.createRoom(socket.id, data.name, data.displayName);
-    socket.emit('room:created', { roomId });
-    io.emit('rooms:update', roomManager.getRoomList());
+    try {
+      console.log('[Room] Creating room for player:', data.name, 'socket:', socket.id);
+      const roomId = roomManager.createRoom(socket.id, data.name, data.displayName);
+      console.log('[Room] Room created successfully:', roomId);
+      socket.emit('room:created', { roomId });
+      io.emit('rooms:update', roomManager.getRoomList());
+    } catch (error) {
+      console.error('[Room] Error creating room:', error);
+      socket.emit('room:error', { message: 'Failed to create room: ' + (error as Error).message });
+    }
   });
 
   socket.on('room:join', (data: { roomId: string; name: string; mode?: 'stock' | 'knockout'; character?: string }) => {
