@@ -114,6 +114,8 @@ export interface Player {
   duckStartTime?: number;
   inLava?: boolean;
   hitStunUntil?: number;
+  stats?: PlayerStats;
+  lastAttackerId?: string;
 }
 
 export interface Bomb {
@@ -181,6 +183,12 @@ export interface Match {
   displayName?: string;
   /** Timestamp when the room was created */
   createdAt?: number;
+}
+
+export interface PlayerStats {
+  kills: number;
+  deaths: number;
+  damageDealt: number;
 }
 
 export interface HitResult {

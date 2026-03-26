@@ -220,6 +220,13 @@ export class GameLoop {
           // Explode
           const results = explodeBomb(bomb, match.players);
           if (results.length > 0) {
+            // Track damage dealt and last attacker for stats
+            const thrower = match.players.find(p => p.id === bomb.thrownBy);
+            for (const result of results) {
+              if (thrower?.stats) thrower.stats.damageDealt += result.damage;
+              const target = match.players.find(p => p.id === result.targetId);
+              if (target) target.lastAttackerId = bomb.thrownBy;
+            }
             io.to(roomId).emit('player:hit', { results, type: 'bomb', bombId: bomb.id });
           }
           io.to(roomId).emit('bomb:explode', { bombId: bomb.id, position: bomb.position });
@@ -302,6 +309,12 @@ export class GameLoop {
     player.isAttacking = true;
     player.attackAnimUntil = now + ATTACK_ANIMATION_DURATION_MS;
     if (results.length > 0) {
+      // Track damage dealt and last attacker for stats
+      for (const result of results) {
+        if (player.stats) player.stats.damageDealt += result.damage;
+        const target = match.players.find(p => p.id === result.targetId);
+        if (target) target.lastAttackerId = player.id;
+      }
       io.to(match.roomId).emit('player:hit', { results, type: 'melee', attackerId: player.id });
     }
   }

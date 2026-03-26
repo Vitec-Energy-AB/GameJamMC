@@ -332,6 +332,10 @@ export class ItemSpawnManager {
             projectileId: proj.id,
           });
 
+          // Track damage dealt and last attacker for stats
+          if (thrower?.stats) thrower.stats.damageDealt += baseDamage;
+          target.lastAttackerId = proj.thrownBy;
+
           proj.active = false;
           match.projectiles.splice(i, 1);
           break;

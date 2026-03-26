@@ -18,6 +18,16 @@ export function checkBlastZones(player: Player, blastZones: Match['map']['blastZ
 }
 
 export function eliminatePlayer(player: Player, match: Match, io: Server): void {
+  // Track death stat
+  if (player.stats) player.stats.deaths++;
+
+  // Award kill credit to the last player who damaged this player
+  if (player.lastAttackerId) {
+    const attacker = match.players.find(p => p.id === player.lastAttackerId);
+    if (attacker?.stats) attacker.stats.kills++;
+    player.lastAttackerId = undefined;
+  }
+
   player.currentLives--;
   io.to(match.roomId).emit('player:eliminated', { playerId: player.id, livesRemaining: player.currentLives });
 
