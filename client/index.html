@@ -568,6 +568,15 @@
     'PlayerThrowBomb': '/sprites/PlayerThrowBomb.png',
     'PlayerHit': '/sprites/PlayerHit.png',
     'Player_duck': '/sprites/Player_duck.png',
+    // Player Heavy animations (Malm character)
+    'PlayerHeavyIdle': '/sprites/PlayerHeavy/Player_Idle_CharacterHeavy.png',
+    'PlayerHeavyRun': '/sprites/PlayerHeavy/Player_Run_CharacterHeavy.png',
+    'PlayerHeavyJump': '/sprites/PlayerHeavy/Player_Jump_CharacterHeavy.png',
+    'PlayerHeavyFall': '/sprites/PlayerHeavy/Player_Fall_CharacterHeavy.png',
+    'PlayerHeavyAttack': '/sprites/PlayerHeavy/Player_Attack_CharacterHeavy.png',
+    'PlayerHeavyShield': '/sprites/PlayerHeavy/Player_Shield_CharacterHeavy.png',
+    'PlayerHeavyHit': '/sprites/PlayerHeavy/Player_Hit_CharacterHeavy.png',
+    'PlayerHeavyDuck': '/sprites/PlayerHeavy/Player_Duck_CharacterHeavy.png',
     // Effects
     'Jump_Effect': '/sprites/Jump_Effect.png',
     'Landing_Dust': '/sprites/Landing_Dust.png',
@@ -2316,24 +2325,33 @@
       }
 
       // Determine which sprite to use based on player state
+      var isHeavy = (p.character === 'malm');
       var playerSprite = null;
       if (spritesLoaded) {
-        if (p.hitStunUntil && p.hitStunUntil > now && sprites['PlayerHit'] && sprites['PlayerHit'].complete) {
-          playerSprite = sprites['PlayerHit'];
-        } else if (p.isDucking && sprites['Player_duck'] && sprites['Player_duck'].complete) {
-          playerSprite = sprites['Player_duck'];
-        } else if (p.isBlocking && sprites['PlayerShield'] && sprites['PlayerShield'].complete) {
-          playerSprite = sprites['PlayerShield'];
-        } else if (p.isAttacking && sprites['PlayerAttack'] && sprites['PlayerAttack'].complete) {
-          playerSprite = sprites['PlayerAttack'];
-        } else if (p.velocity && p.velocity.y < -2 && sprites['PlayerJump'] && sprites['PlayerJump'].complete) {
-          playerSprite = sprites['PlayerJump'];
-        } else if (p.velocity && p.velocity.y > 2 && sprites['PlayerFall'] && sprites['PlayerFall'].complete) {
-          playerSprite = sprites['PlayerFall'];
-        } else if (p.velocity && Math.abs(p.velocity.x) > 0.5 && sprites['PlayerRun'] && sprites['PlayerRun'].complete) {
-          playerSprite = sprites['PlayerRun'];
-        } else if (sprites['PlayerIdle'] && sprites['PlayerIdle'].complete) {
-          playerSprite = sprites['PlayerIdle'];
+        var hitKey = isHeavy ? 'PlayerHeavyHit' : 'PlayerHit';
+        var duckKey = isHeavy ? 'PlayerHeavyDuck' : 'Player_duck';
+        var shieldKey = isHeavy ? 'PlayerHeavyShield' : 'PlayerShield';
+        var attackKey = isHeavy ? 'PlayerHeavyAttack' : 'PlayerAttack';
+        var jumpKey = isHeavy ? 'PlayerHeavyJump' : 'PlayerJump';
+        var fallKey = isHeavy ? 'PlayerHeavyFall' : 'PlayerFall';
+        var runKey = isHeavy ? 'PlayerHeavyRun' : 'PlayerRun';
+        var idleKey = isHeavy ? 'PlayerHeavyIdle' : 'PlayerIdle';
+        if (p.hitStunUntil && p.hitStunUntil > now && sprites[hitKey] && sprites[hitKey].complete) {
+          playerSprite = sprites[hitKey];
+        } else if (p.isDucking && sprites[duckKey] && sprites[duckKey].complete) {
+          playerSprite = sprites[duckKey];
+        } else if (p.isBlocking && sprites[shieldKey] && sprites[shieldKey].complete) {
+          playerSprite = sprites[shieldKey];
+        } else if (p.isAttacking && sprites[attackKey] && sprites[attackKey].complete) {
+          playerSprite = sprites[attackKey];
+        } else if (p.velocity && p.velocity.y < -2 && sprites[jumpKey] && sprites[jumpKey].complete) {
+          playerSprite = sprites[jumpKey];
+        } else if (p.velocity && p.velocity.y > 2 && sprites[fallKey] && sprites[fallKey].complete) {
+          playerSprite = sprites[fallKey];
+        } else if (p.velocity && Math.abs(p.velocity.x) > 0.5 && sprites[runKey] && sprites[runKey].complete) {
+          playerSprite = sprites[runKey];
+        } else if (sprites[idleKey] && sprites[idleKey].complete) {
+          playerSprite = sprites[idleKey];
         }
       }
 
