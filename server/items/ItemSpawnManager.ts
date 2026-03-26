@@ -298,6 +298,7 @@ export class ItemSpawnManager {
           const klen = Math.sqrt(kx * kx + ky * ky);
           target.velocity.x += (kx / klen) * magnitude;
           target.velocity.y += (ky / klen) * magnitude;
+          target.hitStunUntil = now + 200 + Math.min(magnitude * 0.5, 400);
 
           io.to(match.roomId).emit('player:hit', {
             results: [{ targetId: target.id, damage: baseDamage, knockback: { x: (kx / klen) * magnitude, y: (ky / klen) * magnitude }, blocked: false }],

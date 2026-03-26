@@ -17,10 +17,12 @@ export function applyMovement(player: Player, dt: number): void {
   const maxSpeed = baseSpeed * speedMultiplier;
   const accel = ACCELERATION * speedMultiplier;
 
-  if (input.left) {
+  const isStaggered = (player.hitStunUntil ?? 0) > now;
+
+  if (!isStaggered && input.left) {
     player.velocity.x = Math.max(player.velocity.x - accel * dt, -maxSpeed);
     player.facing = 'left';
-  } else if (input.right) {
+  } else if (!isStaggered && input.right) {
     player.velocity.x = Math.min(player.velocity.x + accel * dt, maxSpeed);
     player.facing = 'right';
   } else {

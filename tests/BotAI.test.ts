@@ -45,6 +45,7 @@ function makePlayer(overrides: Partial<Player> = {}): Player {
     shieldSplitterUntil: 0,
     damageMitigation: 0,
     forceFieldUntil: 0,
+    hitStunUntil: 0,
     attackCooldown: 0,
     ...overrides,
   };

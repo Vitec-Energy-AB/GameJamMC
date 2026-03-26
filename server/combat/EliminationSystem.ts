@@ -57,6 +57,7 @@ export function respawnPlayer(player: Player, spawnPoints: { x: number; y: numbe
   player.shieldSplitterUntil = 0;
   player.damageMitigation = 0;
   player.forceFieldUntil = 0;
+  player.hitStunUntil = 0;
 }
 
 export function initPlayerLives(player: Player, mode: 'stock' | 'knockout'): void {

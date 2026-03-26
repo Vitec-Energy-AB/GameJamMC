@@ -2068,6 +2068,13 @@
       }
 
       var x = p.position.x, y = p.position.y;
+
+      // Visual shake effect during hit stagger
+      if ((p.hitStunUntil ?? 0) > now) {
+        var shakeIntensity = 3 * ((p.hitStunUntil - now) / 400);
+        x += (Math.random() - 0.5) * shakeIntensity * 2;
+        y += (Math.random() - 0.5) * shakeIntensity;
+      }
       var col = p.color || '#888';
 
       ctx.shadowColor = col;
@@ -2106,7 +2113,9 @@
       // Determine which sprite to use based on player state
       var playerSprite = null;
       if (spritesLoaded) {
-        if (p.isDucking && sprites['Player_duck'] && sprites['Player_duck'].complete) {
+        if (p.hitStunUntil && p.hitStunUntil > now && sprites['PlayerHit'] && sprites['PlayerHit'].complete) {
+          playerSprite = sprites['PlayerHit'];
+        } else if (p.isDucking && sprites['Player_duck'] && sprites['Player_duck'].complete) {
           playerSprite = sprites['Player_duck'];
         } else if (p.isBlocking && sprites['PlayerShield'] && sprites['PlayerShield'].complete) {
           playerSprite = sprites['PlayerShield'];

@@ -54,6 +54,11 @@ export function explodeBomb(bomb: Bomb, players: Player[]): HitResult[] {
       player.velocity.y += knockback.y;
       player.invulnerableUntil = now + 1000;
 
+      if (!player.isBlocking) {
+        const knockbackMagnitude = Math.sqrt(knockback.x * knockback.x + knockback.y * knockback.y);
+        player.hitStunUntil = now + 200 + Math.min(knockbackMagnitude * 0.5, 400);
+      }
+
       results.push({ targetId: player.id, damage, knockback, blocked: player.isBlocking });
     }
   }
