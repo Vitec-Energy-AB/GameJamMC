@@ -155,7 +155,7 @@ export function attackTarget(bot: Player, target: Player, config: BotDifficultyC
   // Use weapon if available
   if (bot.currentWeapon) {
     if ((bot.weaponCooldownUntil ?? 0) <= now && Math.random() < effectiveAccuracy) {
-      bot.inputState.useWeapon = true;
+      bot.inputState.attack = true;
       return;
     }
     // Weapon on cooldown – fall through to melee
