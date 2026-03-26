@@ -13,7 +13,9 @@ export function applyMovement(player: Player, dt: number): void {
   const baseSpeed = character ? character.speed : DEFAULT_SPEED;
 
   // Freeze effect: halved movement speed
-  const speedMultiplier = (player.freezeUntil ?? 0) > now ? 0.5 : 1.0;
+  const freezeMultiplier = (player.freezeUntil ?? 0) > now ? 0.5 : 1.0;
+  const speedBoostMultiplier = (player.speedBoostUntil ?? 0) > now ? 1.5 : 1.0;
+  const speedMultiplier = freezeMultiplier * speedBoostMultiplier;
   const maxSpeed = baseSpeed * speedMultiplier;
   const accel = ACCELERATION * speedMultiplier;
 

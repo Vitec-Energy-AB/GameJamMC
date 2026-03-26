@@ -34,9 +34,29 @@ const WEAPON_TEMPLATES: WeaponTemplate[] = [
     ammo: 3,
     rarity: 'common',
   },
+  {
+    type: 'fireaxe',
+    category: 'melee',
+    damage: 35,
+    knockbackModifier: 2.0,
+    attackCooldown: 800,
+    durability: 5,
+    ammo: 0,
+    rarity: 'uncommon',
+  },
+  {
+    type: 'sword',
+    category: 'melee',
+    damage: 22,
+    knockbackModifier: 1.3,
+    attackCooldown: 350,
+    durability: 8,
+    ammo: 0,
+    rarity: 'common',
+  },
 ];
 
-const POWERUP_TYPES: PowerupType[] = ['forcefield'];
+const POWERUP_TYPES: PowerupType[] = ['forcefield', 'speedboost', 'jumpboost', 'damageboost'];
 
 // Rarity weights: common=60, uncommon=30, rare=10
 const RARITY_WEIGHTS: Record<WeaponItem['rarity'], number> = {
@@ -191,6 +211,12 @@ export class ItemSpawnManager {
   private applyPowerup(player: Player, powerup: PowerupItem, now: number): void {
     if (powerup.type === 'forcefield') {
       player.forceFieldUntil = now + 5000;
+    } else if (powerup.type === 'speedboost') {
+      player.speedBoostUntil = now + 6000;
+    } else if (powerup.type === 'jumpboost') {
+      player.jumpBoostUntil = now + 6000;
+    } else if (powerup.type === 'damageboost') {
+      player.damageBoostUntil = now + 8000;
     }
   }
 
