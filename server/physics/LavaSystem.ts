@@ -2,10 +2,10 @@ import { Match, Player } from '../../shared/types';
 import { Server } from 'socket.io';
 import { PLAYER_HEIGHT, PLAYER_WIDTH } from '../../shared/constants';
 
-export const DEFAULT_LAVA_RISE_SPEED = 25;
+export const DEFAULT_LAVA_RISE_SPEED = 15;
 export const DEFAULT_LAVA_DAMAGE = 50;
 export const DEFAULT_START_DELAY = 8;
-export const DEFAULT_ACCELERATION = 1.5;
+export const DEFAULT_ACCELERATION = 0.8;
 const LAVA_DAMAGE_INTERVAL = 500;
 const LAVA_MAX_SINK_SPEED = 35;   // max downward velocity in lava (px/s) — very slow like quicksand
 const LAVA_DRAG = 0.88;           // per-frame velocity multiplier (exponential decay) for all axes

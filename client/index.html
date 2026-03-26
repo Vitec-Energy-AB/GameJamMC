@@ -2862,10 +2862,10 @@
             var dist = Math.sqrt(dx * dx + dy * dy);
             if (dist < minDist) minDist = dist;
           }
-          // Map distance 0-900 → zoom 1.2-0.8
-          targetZoom = 1.2 - (Math.min(minDist, 900) / 900) * 0.4;
+          // Map distance 0-1400 → zoom 1.2-0.55 (range = 1.2 - 0.55 = 0.65)
+          targetZoom = 1.2 - (Math.min(minDist, 1400) / 1400) * 0.65;
         }
-        targetZoom = Math.max(0.8, Math.min(1.4, targetZoom));
+        targetZoom = Math.max(0.55, Math.min(1.4, targetZoom));
         cameraZoom += (targetZoom - cameraZoom) * 0.05;
 
         // Clamp camera Y to stay within the active window (between windowTop and lava surface)
