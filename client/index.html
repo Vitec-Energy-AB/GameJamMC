@@ -301,6 +301,32 @@
         <button id="joinBtn">Join Room</button>
       </div>
 
+      <div id="lobbyCharSection" style="display:none;">
+        <label>Choose Character</label>
+        <div class="char-cards" id="lobbyCharCards">
+          <div class="char-card selected" data-char="bjork">
+            <div class="char-dot" style="background:#4CAF50;"></div>
+            <div class="char-name">Bjork</div>
+            <div class="char-desc">Balanced</div>
+          </div>
+          <div class="char-card" data-char="gnista">
+            <div class="char-dot" style="background:#FF9800;"></div>
+            <div class="char-name">Gnista</div>
+            <div class="char-desc">Fast &amp; light</div>
+          </div>
+          <div class="char-card" data-char="malm">
+            <div class="char-dot" style="background:#795548;"></div>
+            <div class="char-name">Malm</div>
+            <div class="char-desc">Heavy hitter</div>
+          </div>
+          <div class="char-card" data-char="dimma">
+            <div class="char-dot" style="background:#9C27B0;"></div>
+            <div class="char-name">Dimma</div>
+            <div class="char-desc">Triple jump</div>
+          </div>
+        </div>
+      </div>
+
     <button id="readyBtn">&#x2713; Ready!</button>
 
     <div id="botSection" style="display:none; margin-top:12px;">
@@ -631,6 +657,7 @@
   var mapSection = document.getElementById('mapSection');
   var mapCardsDiv = document.getElementById('mapCards');
   var selectedMapLabel = document.getElementById('selectedMapLabel');
+  var lobbyCharSection = document.getElementById('lobbyCharSection');
 
   roomLabel.textContent = 'Room: ' + roomId;
 
@@ -873,12 +900,20 @@
   });
 
   // ── Input ───────────────────────────────────────────────────────────────────
-  // Character card selection
+  // Character card selection (pre-join and in-lobby)
   document.querySelectorAll('.char-card').forEach(function(card) {
     card.addEventListener('click', function() {
       selectedCharacter = card.dataset.char;
-      document.querySelectorAll('.char-card').forEach(function(c) { c.classList.remove('selected'); });
-      card.classList.add('selected');
+      document.querySelectorAll('.char-card').forEach(function(c) {
+        if (c.dataset.char === selectedCharacter) {
+          c.classList.add('selected');
+        } else {
+          c.classList.remove('selected');
+        }
+      });
+      if (currentMatch && socket) {
+        socket.emit('player:changeCharacter', { character: selectedCharacter });
+      }
     });
   });
 
@@ -1184,11 +1219,13 @@
         queueMsg.style.display = 'block';
         readyBtn.style.display = 'none';
         joinSection.style.display = 'none';
+        lobbyCharSection.style.display = 'none';
       } else {
         queueMsg.style.display = 'none';
         readyBtn.style.display = 'block';
         mapSection.style.display = 'block';
         joinSection.style.display = 'none';
+        lobbyCharSection.style.display = 'block';
         var botSection = document.getElementById('botSection');
         if (botSection) botSection.style.display = 'block';
       }
@@ -1221,6 +1258,7 @@
       currentMatch = match;
       inGame = true;
       lobbyOverlay.style.display = 'none';
+      lobbyCharSection.style.display = 'none';
       countdownDiv.style.display = 'none';
       stateBuffer = [];
       wasGrounded = {};
