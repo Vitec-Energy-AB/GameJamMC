@@ -1554,22 +1554,12 @@
     });
 
     socket.on('match:end', function(data) {
-      console.log('[game-end] match:end event received:', {
-        winnerId: data.winnerId,
-        winnerName: data.winnerName,
-        hasPlayerStats: !!(data.playerStats && data.playerStats.length),
-        playerStatsCount: data.playerStats ? data.playerStats.length : 0,
-        localPlayerId: localPlayerId,
-        currentGamePhase: gamePhase
-      });
-
       // Freeze camera at current position and begin fade-out transition
       frozenCameraX = cameraX;
       frozenCameraY = cameraY;
       frozenCameraZoom = cameraZoom;
       gameOverFadeStartTime = Date.now();
       gamePhase = 'gameOverTransition';
-      console.log('[game-end] Game phase changed to gameOverTransition, fade-out started');
       stopMusic();
       updateShootBtnVisibility();
       updateRotateOverlay();
@@ -1580,19 +1570,15 @@
       if (data.winnerId === 'draw') {
         winnerNameEl.textContent = "It's a Draw!";
         lastWinnerName = null;
-        console.log('[game-end] Winner display: Draw');
       } else if (data.winnerId === localPlayerId) {
         winnerNameEl.textContent = '🏆 You Win!';
         lastWinnerName = data.winnerName || null;
-        console.log('[game-end] Winner display: Local player wins');
       } else {
         winnerNameEl.textContent = 'Winner: ' + data.winnerName;
         lastWinnerName = data.winnerName || null;
-        console.log('[game-end] Winner display: Other player wins (' + data.winnerName + ')');
       }
       // Show post-match stats if available
       if (data.playerStats && data.playerStats.length > 0) {
-        console.log('[game-end] Rendering player stats, count:', data.playerStats.length);
         var statsSection = document.getElementById('statsSection');
         var statsBody = document.getElementById('statsBody');
         statsBody.innerHTML = '';
@@ -1608,38 +1594,28 @@
           statsBody.appendChild(tr);
         }
         statsSection.style.display = 'block';
-        console.log('[game-end] Player stats section displayed');
-      } else {
-        console.log('[game-end] No player stats available');
       }
       // Fetch updated leaderboard after a short delay so the server has time to write it
-      console.log('[game-end] Scheduling leaderboard fetch in 800ms');
       setTimeout(fetchLeaderboard, 800); // 800ms gives server time to persist the score
 
       // After fade-out completes, switch to gameOver phase and show the screen
-      console.log('[game-end] Scheduling game over screen display in ' + GAME_OVER_FADE_DURATION + 'ms');
       setTimeout(function() {
-        console.log('[game-end] Fade-out complete, switching to gameOver phase');
         gamePhase = 'gameOver';
         cameraX = 0;
         cameraY = 0;
         cameraZoom = 1.0;
         targetZoom = 1.0;
-        // Reset child element animations by forcing a DOM reflow before showing
-        gameOverScreen.style.display = 'none';
-        void gameOverScreen.offsetHeight; // trigger reflow to restart CSS animations
         gameOverScreen.style.display = 'flex';
-        console.log('[game-end] Game over screen displayed (display: flex)');
-
-        // Verify the screen is actually visible
-        var computedDisplay = window.getComputedStyle(gameOverScreen).display;
-        var computedVisibility = window.getComputedStyle(gameOverScreen).visibility;
-        var computedOpacity = window.getComputedStyle(gameOverScreen).opacity;
-        console.log('[game-end] Game over screen computed styles:', {
-          display: computedDisplay,
-          visibility: computedVisibility,
-          opacity: computedOpacity
-        });
+        // Restart CSS animations on each child element so they fade in correctly
+        var animatedChildren = ['gameOverTitle', 'winnerName', 'statsSection', 'leaderboardSection', 'playAgainBtn', 'backToLobbyBtn'];
+        for (var i = 0; i < animatedChildren.length; i++) {
+          var el = document.getElementById(animatedChildren[i]);
+          if (el) {
+            el.style.animation = 'none';
+            void el.offsetHeight; // trigger reflow to restart animation
+            el.style.animation = '';
+          }
+        }
       }, GAME_OVER_FADE_DURATION);
     });
 
