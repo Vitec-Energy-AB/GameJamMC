@@ -104,12 +104,41 @@
       transform: scale(0.98);
       background: #229954;
     }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
     #gameOverScreen {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0,0,0,1); display: none; flex-direction: column;
       align-items: center; justify-content: center; z-index: 20;
       pointer-events: auto; overflow-y: auto;
       padding: 20px;
+    }
+    #gameOverTitle {
+      opacity: 0;
+      animation: fadeInUp 0.6s ease forwards;
+      animation-delay: 0.1s;
+    }
+    #winnerName {
+      opacity: 0;
+      animation: fadeInUp 0.6s ease forwards;
+      animation-delay: 0.4s;
+    }
+    #statsSection {
+      opacity: 0;
+      animation: fadeInUp 0.6s ease forwards;
+      animation-delay: 0.9s;
+    }
+    #leaderboardSection {
+      opacity: 0;
+      animation: fadeInUp 0.6s ease forwards;
+      animation-delay: 1.4s;
+    }
+    #playAgainBtn, #backToLobbyBtn {
+      opacity: 0;
+      animation: fadeInUp 0.5s ease forwards;
+      animation-delay: 1.8s;
     }
     #backToLobbyBtn {
       background: #3498db; color: #fff; padding: 12px 40px; font-size: 1.2rem;
@@ -705,7 +734,18 @@
   var socket = null;
   var localPlayerId = null;
   var currentMatch = null;
-  var inGame = false;
+  // gamePhase: 'lobby' | 'playing' | 'gameOverTransition' | 'gameOver'
+  var gamePhase = 'lobby';
+  // Returns true only during active gameplay (input accepted, camera follows player)
+  function isPlaying() { return gamePhase === 'playing'; }
+  // Returns true during playing AND the fade-out transition (game visuals still rendered)
+  function isInGame() { return gamePhase === 'playing' || gamePhase === 'gameOverTransition'; }
+  // Fade-out transition state
+  var gameOverFadeStartTime = 0;
+  var GAME_OVER_FADE_DURATION = 1500; // ms
+  var frozenCameraX = 0;
+  var frozenCameraY = 0;
+  var frozenCameraZoom = 1.0;
   var stateBuffer = [];
   var currentLavaY = null;
   var currentWindowTop = null;
@@ -779,14 +819,14 @@
     if (!rotateOverlay) return;
     var isPortrait = window.innerHeight > window.innerWidth;
     var isTouch = window.matchMedia('(pointer: coarse)').matches;
-    rotateOverlay.style.display = (inGame && isPortrait && isTouch) ? 'flex' : 'none';
+    rotateOverlay.style.display = (isInGame() && isPortrait && isTouch) ? 'flex' : 'none';
   }
 
   // ── Shoot button visibility ──────────────────────────────────────────────────
   function updateShootBtnVisibility() {
     var isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
     var btn = document.getElementById('shootBtn');
-    if (btn) btn.style.display = (isTouchDevice && inGame) ? 'flex' : 'none';
+    if (btn) btn.style.display = (isTouchDevice && isPlaying()) ? 'flex' : 'none';
   }
 
   // Attach resize/orientation listeners
@@ -979,12 +1019,12 @@
     }
 
     if (on) {
-      if (gameMusicAudio && inGame) {
+      if (gameMusicAudio && isPlaying()) {
         gameMusicAudio.play().catch(function(err) {
           console.warn('[audio] Failed to play GameMusic.mp3:', err);
         });
       }
-      if (inGame) {
+      if (isPlaying()) {
         startMusic(currentMapId);
       }
     } else {
@@ -1359,7 +1399,7 @@
 
     socket.on('match:start', function(match) {
       currentMatch = match;
-      inGame = true;
+      gamePhase = 'playing';
       lobbyOverlay.style.display = 'none';
       lobbyCharSection.style.display = 'none';
       countdownDiv.style.display = 'none';
@@ -1491,16 +1531,18 @@
     });
 
     socket.on('match:end', function(data) {
-      inGame = false;
-      cameraX = 0;
-      cameraY = 0;
-      cameraZoom = 1.0;
-      targetZoom = 1.0;
+      // Freeze camera at current position and begin fade-out transition
+      frozenCameraX = cameraX;
+      frozenCameraY = cameraY;
+      frozenCameraZoom = cameraZoom;
+      gameOverFadeStartTime = Date.now();
+      gamePhase = 'gameOverTransition';
       stopMusic();
       updateShootBtnVisibility();
       updateRotateOverlay();
       if (data.winnerId === localPlayerId) sounds.win();
-      gameOverScreen.style.display = 'flex';
+
+      // Prepare game over screen content (hidden until fade completes)
       var winnerNameEl = document.getElementById('winnerName');
       if (data.winnerId === 'draw') {
         winnerNameEl.textContent = "It's a Draw!";
@@ -1531,12 +1573,26 @@
         statsSection.style.display = 'block';
       }
       // Fetch updated leaderboard after a short delay so the server has time to write it
-      setTimeout(fetchLeaderboard, 800);
+      setTimeout(fetchLeaderboard, 800); // 800ms gives server time to persist the score
+
+      // After fade-out completes, switch to gameOver phase and show the screen
+      setTimeout(function() {
+        gamePhase = 'gameOver';
+        cameraX = 0;
+        cameraY = 0;
+        cameraZoom = 1.0;
+        targetZoom = 1.0;
+        // Reset child element animations by forcing a DOM reflow before showing
+        gameOverScreen.style.display = 'none';
+        void gameOverScreen.offsetHeight; // trigger reflow to restart CSS animations
+        gameOverScreen.style.display = 'flex';
+      }, GAME_OVER_FADE_DURATION);
     });
 
     var backToLobbyBtn = document.getElementById('backToLobbyBtn');
     if (backToLobbyBtn) {
       backToLobbyBtn.addEventListener('click', function() {
+        gamePhase = 'lobby';
         gameOverScreen.style.display = 'none';
         roomSelectorOverlay.style.display = 'flex';
         if (socket) socket.emit('rooms:list');
@@ -2812,7 +2868,7 @@
     requestAnimationFrame(gameLoop);
     var now = Date.now();
 
-    if (!inGame) {
+    if (gamePhase !== 'playing' && gamePhase !== 'gameOverTransition') {
       drawBackground();
       var _dpr = window.devicePixelRatio || 1;
       ctx.save();
@@ -2823,36 +2879,38 @@
       return;
     }
 
-    // Send input to server
-    var inputStr = JSON.stringify(localInput);
-    var lastStr = JSON.stringify(lastInputSent);
-    if (inputStr !== lastStr) {
-      socket.emit('input:update', Object.assign({}, localInput));
-      lastInputSent = Object.assign({}, localInput);
-    }
+    // Only send input while actively playing (not during fade-out transition)
+    if (gamePhase === 'playing') {
+      var inputStr = JSON.stringify(localInput);
+      var lastStr = JSON.stringify(lastInputSent);
+      if (inputStr !== lastStr) {
+        socket.emit('input:update', Object.assign({}, localInput));
+        lastInputSent = Object.assign({}, localInput);
+      }
 
-    if (localInput.attack && !attackPressed) {
-      socket.emit('player:attack');
-      sounds.attack();
-    }
-    attackPressed = localInput.attack;
+      if (localInput.attack && !attackPressed) {
+        socket.emit('player:attack');
+        sounds.attack();
+      }
+      attackPressed = localInput.attack;
 
-    if (localInput.jump && !localInput._prevJump) {
-      sounds.jump();
-    }
-    localInput._prevJump = localInput.jump;
+      if (localInput.jump && !localInput._prevJump) {
+        sounds.jump();
+      }
+      localInput._prevJump = localInput.jump;
 
-    if (localInput.throwBomb && !bombPressed) {
-      socket.emit('player:throwBomb');
-    }
-    bombPressed = localInput.throwBomb;
+      if (localInput.throwBomb && !bombPressed) {
+        socket.emit('player:throwBomb');
+      }
+      bombPressed = localInput.throwBomb;
 
-    if (localInput.pickup && !pickupPressed) {
-      socket.emit('item:pickup');
-    }
-    pickupPressed = localInput.pickup;
+      if (localInput.pickup && !pickupPressed) {
+        socket.emit('item:pickup');
+      }
+      pickupPressed = localInput.pickup;
 
-    socket.emit('player:block', localInput.block);
+      socket.emit('player:block', localInput.block);
+    }
 
     var state = getInterpolatedState();
 
@@ -2861,7 +2919,12 @@
     var screenW = canvas.width / dpr;
     var screenH = canvas.height / dpr;
 
-    if (state && localPlayerId) {
+    if (gamePhase === 'gameOverTransition') {
+      // Use frozen camera position during fade-out
+      cameraX = frozenCameraX;
+      cameraY = frozenCameraY;
+      cameraZoom = frozenCameraZoom;
+    } else if (state && localPlayerId) {
       var lp = state.players.find(function(p) { return p.id === localPlayerId; });
       if (lp) {
         var targetCameraX = lp.position.x + PLAYER_W / 2;
@@ -3114,7 +3177,7 @@
     }
 
     // Draw virtual joystick in screen-space
-    if (joystickVisible && inGame) {
+    if (joystickVisible && isInGame()) {
       ctx.save();
       ctx.scale(dpr, dpr);
       // Outer circle (base)
@@ -3132,6 +3195,18 @@
       var jThumbY = joystickY + Math.max(-50, Math.min(50, joystickDy));
       ctx.arc(jThumbX, jThumbY, 20, 0, Math.PI * 2);
       ctx.fill();
+      ctx.restore();
+    }
+
+    // Draw fade-to-black overlay during game over transition
+    if (gamePhase === 'gameOverTransition') {
+      var elapsed = now - gameOverFadeStartTime;
+      var fadeAlpha = Math.min(elapsed / GAME_OVER_FADE_DURATION, 1.0);
+      ctx.save();
+      ctx.scale(dpr, dpr);
+      ctx.globalAlpha = fadeAlpha;
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, screenW, screenH);
       ctx.restore();
     }
   }
