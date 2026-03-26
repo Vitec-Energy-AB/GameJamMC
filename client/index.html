@@ -106,9 +106,14 @@
     }
     #gameOverScreen {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.9); display: none; flex-direction: column;
+      background: rgba(0,0,0,1); display: none; flex-direction: column;
       align-items: center; justify-content: center; z-index: 20;
-      pointer-events: auto;
+      pointer-events: auto; overflow-y: auto;
+      padding: 20px;
+    }
+    #backToLobbyBtn {
+      background: #3498db; color: #fff; padding: 12px 40px; font-size: 1.2rem;
+      cursor: pointer; pointer-events: auto; margin-top: 12px;
     }
     .lobby-box {
       background: #16213e; border: 1px solid #0f3460; border-radius: 12px;
@@ -420,6 +425,7 @@
     <div id="leaderboardStatus">Loading leaderboard...</div>
   </div>
   <button id="playAgainBtn" onclick="location.reload()">Play Again</button>
+  <button id="backToLobbyBtn">Back to Lobby</button>
 </div>
 
 <div id="rotateOverlay">
@@ -1486,6 +1492,10 @@
 
     socket.on('match:end', function(data) {
       inGame = false;
+      cameraX = 0;
+      cameraY = 0;
+      cameraZoom = 1.0;
+      targetZoom = 1.0;
       stopMusic();
       updateShootBtnVisibility();
       updateRotateOverlay();
@@ -1523,6 +1533,16 @@
       // Fetch updated leaderboard after a short delay so the server has time to write it
       setTimeout(fetchLeaderboard, 800);
     });
+
+    var backToLobbyBtn = document.getElementById('backToLobbyBtn');
+    if (backToLobbyBtn) {
+      backToLobbyBtn.addEventListener('click', function() {
+        gameOverScreen.style.display = 'none';
+        roomSelectorOverlay.style.display = 'flex';
+        if (socket) socket.emit('rooms:list');
+        fetchLobbyLeaderboard();
+      });
+    }
 
     socket.on('player:disconnect', function() {
       statusMsg.textContent = 'A player disconnected.';
