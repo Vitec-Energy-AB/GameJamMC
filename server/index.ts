@@ -161,6 +161,21 @@ io.on('connection', (socket) => {
     lobbyManager.handlePlayerReady(roomId, socket.id, match, io);
   });
 
+  socket.on('player:changeCharacter', (data: { character: string }) => {
+    const roomId = playerRoom.get(socket.id);
+    if (!roomId) return;
+    const match = roomManager.getRoom(roomId);
+    if (!match || match.state !== 'lobby') return;
+    const player = match.players.find(p => p.id === socket.id);
+    if (!player) return;
+    const characterId = typeof data.character === 'string' && getCharacter(data.character) ? data.character : 'bjork';
+    const characterStats = getCharacter(characterId)!;
+    player.character = characterId;
+    player.jumpsRemaining = characterStats.maxJumps;
+    player.color = characterStats.color;
+    io.to(roomId).emit('room:update', match);
+  });
+
   socket.on('map:vote', (data: { mapId: string }) => {
     const roomId = playerRoom.get(socket.id);
     if (!roomId) return;
