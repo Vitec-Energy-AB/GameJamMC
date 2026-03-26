@@ -23,8 +23,9 @@ export function performAttack(attacker: Player, targets: Player[], weaponOverrid
 
   const character = getCharacter(attacker.character);
   const dmgMod = character ? character.dmgMod : 1.0;
+  const damageBoostMultiplier = (attacker.damageBoostUntil ?? 0) > now ? 1.5 : 1.0;
 
-  const damage = (weaponOverride?.damage ?? BASE_DAMAGE) * dmgMod;
+  const damage = (weaponOverride?.damage ?? BASE_DAMAGE) * dmgMod * damageBoostMultiplier;
   const attackModifier = weaponOverride?.knockbackModifier ?? ATTACK_MODIFIER;
 
   // Compute hitbox position based on facing

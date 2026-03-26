@@ -57,6 +57,9 @@ export function respawnPlayer(player: Player, spawnPoints: { x: number; y: numbe
   player.shieldSplitterUntil = 0;
   player.damageMitigation = 0;
   player.forceFieldUntil = 0;
+  player.speedBoostUntil = 0;
+  player.jumpBoostUntil = 0;
+  player.damageBoostUntil = 0;
   player.hitStunUntil = 0;
 }
 

@@ -12,7 +12,7 @@ export interface InputState {
 
 export interface WeaponItem {
   id: string;
-  type: 'lightningspear';
+  type: 'lightningspear' | 'fireaxe' | 'sword';
   category: 'melee' | 'thrown';
   position: { x: number; y: number };
   pickedUpBy: string | null;
@@ -28,7 +28,7 @@ export interface WeaponItem {
 
 export interface PowerupItem {
   id: string;
-  type: 'forcefield';
+  type: 'forcefield' | 'speedboost' | 'jumpboost' | 'damageboost';
   position: { x: number; y: number };
   active: boolean;
   spawnTime: number;
@@ -105,6 +105,9 @@ export interface Player {
   shieldSplitterUntil: number;
   damageMitigation: number;
   forceFieldUntil: number;
+  speedBoostUntil?: number;
+  jumpBoostUntil?: number;
+  damageBoostUntil?: number;
   isAttacking?: boolean;
   attackAnimUntil?: number;
   isDucking?: boolean;

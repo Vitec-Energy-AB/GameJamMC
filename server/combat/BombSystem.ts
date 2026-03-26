@@ -35,6 +35,9 @@ export function explodeBomb(bomb: Bomb, players: Player[]): HitResult[] {
   const results: HitResult[] = [];
   const now = Date.now();
 
+  const thrower = players.find(p => p.id === bomb.thrownBy);
+  const damageBoostMultiplier = thrower && (thrower.damageBoostUntil ?? 0) > now ? 1.5 : 1.0;
+
   for (const player of players) {
     if (player.status !== 'alive') continue;
     if (player.invulnerableUntil > now) continue;
@@ -47,7 +50,7 @@ export function explodeBomb(bomb: Bomb, players: Player[]): HitResult[] {
 
     if (dist <= bomb.explosionRadius) {
       const falloff = 1 - dist / bomb.explosionRadius;
-      const damage = applyDamage(player, bomb.damage * falloff, player.isBlocking);
+      const damage = applyDamage(player, bomb.damage * falloff * damageBoostMultiplier, player.isBlocking);
       const knockback = calculateBombKnockback(bomb.position, player, KNOCKBACK_MULTIPLIER * falloff);
 
       player.velocity.x += knockback.x;

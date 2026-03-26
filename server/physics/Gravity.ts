@@ -16,9 +16,12 @@ export function applyGravity(player: Player, dt: number): void {
 
 export function applyJump(player: Player): void {
   if (player.jumpsRemaining > 0) {
+    const now = Date.now();
     const character = getCharacter(player.character);
     const jumpVelocity = character ? character.jumpForce : DEFAULT_JUMP_VELOCITY;
-    player.velocity.y = player.inLava ? jumpVelocity * LAVA_JUMP_MULTIPLIER : jumpVelocity;
+    const jumpBoostMultiplier = (player.jumpBoostUntil ?? 0) > now ? 1.3 : 1.0;
+    const effectiveJumpVelocity = jumpVelocity * jumpBoostMultiplier;
+    player.velocity.y = player.inLava ? effectiveJumpVelocity * LAVA_JUMP_MULTIPLIER : effectiveJumpVelocity;
     player.jumpsRemaining--;
     player.isGrounded = false;
   }

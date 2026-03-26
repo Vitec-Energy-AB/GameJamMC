@@ -130,6 +130,8 @@ export class GameLoop {
           if (!player.isBlocking && (player.blockCooldown ?? 0) <= now) {
             player.isBlocking = true;
             player.blockDuration = now + 2000;
+          } else if (!player.isBlocking && (player.blockCooldown ?? 0) > now) {
+            io.to(player.id).emit('player:blockFailed');
           }
         } else {
           if (player.isBlocking) {
