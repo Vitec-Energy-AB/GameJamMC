@@ -1368,7 +1368,7 @@
       startMusic(currentMapId || 'testArena');
       updateShootBtnVisibility();
       updateRotateOverlay();
-      try { screen.orientation.lock('landscape'); } catch(_) {}
+      try { screen.orientation.lock('landscape').catch(function() {}); } catch(_) {}
     });
 
     socket.on('state:update', function(state) {
@@ -1413,7 +1413,8 @@
       // Spawn speedline particles for significant knockback (improvement #32)
       if (data && data.results) {
         var now = Date.now();
-        var players = (state && state.players) || (currentMatch && currentMatch.players) || [];
+        var latestState = stateBuffer.length > 0 ? stateBuffer[stateBuffer.length - 1] : null;
+        var players = (latestState && latestState.players) || (currentMatch && currentMatch.players) || [];
         for (var ri = 0; ri < data.results.length; ri++) {
           var result = data.results[ri];
           if (!result.knockback) continue;
