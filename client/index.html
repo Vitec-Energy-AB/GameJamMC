@@ -528,19 +528,36 @@
   var lastWinnerName = null;
 
   function fetchLeaderboard() {
+    console.log('[game-end] fetchLeaderboard() called');
     var status = document.getElementById('leaderboardStatus');
     var tbody = document.getElementById('leaderboardBody');
     if (status) status.textContent = 'Loading leaderboard\u2026';
     if (tbody) tbody.innerHTML = '';
+    console.log('[game-end] Fetching leaderboard from /api/leaderboard?limit=10');
     fetch('/api/leaderboard?limit=10')
-      .then(function(r) { return r.json(); })
+      .then(function(r) {
+        console.log('[game-end] Leaderboard response received, status:', r.status, 'ok:', r.ok);
+        if (!r.ok) {
+          throw new Error('HTTP ' + r.status + ': ' + r.statusText);
+        }
+        return r.json();
+      })
       .then(function(data) {
+        console.log('[game-end] Leaderboard data parsed:', {
+          hasEntries: !!(data.entries),
+          entryCount: data.entries ? data.entries.length : 0,
+          lastWinnerName: lastWinnerName
+        });
         if (!data.entries || !data.entries.length) {
           if (status) status.textContent = 'No entries yet \u2013 be the first!';
+          console.log('[game-end] No leaderboard entries found');
           return;
         }
         if (status) status.textContent = '';
-        if (!tbody) return;
+        if (!tbody) {
+          console.warn('[game-end] leaderboardBody element not found in DOM');
+          return;
+        }
         data.entries.forEach(function(e, idx) {
           var tr = document.createElement('tr');
           var dateStr = '';
@@ -553,9 +570,15 @@
             '<td>' + dateStr + '</td>';
           tbody.appendChild(tr);
         });
+        console.log('[game-end] Leaderboard rendered successfully with', data.entries.length, 'entries');
       })
       .catch(function(err) {
-        console.warn('[leaderboard] Fetch failed:', err);
+        console.error('[game-end] Leaderboard fetch FAILED:', err);
+        console.error('[game-end] Error details:', {
+          message: err.message,
+          stack: err.stack,
+          name: err.name
+        });
         if (status) status.textContent = 'Could not load leaderboard.';
       });
   }
@@ -1531,12 +1554,22 @@
     });
 
     socket.on('match:end', function(data) {
+      console.log('[game-end] match:end event received:', {
+        winnerId: data.winnerId,
+        winnerName: data.winnerName,
+        hasPlayerStats: !!(data.playerStats && data.playerStats.length),
+        playerStatsCount: data.playerStats ? data.playerStats.length : 0,
+        localPlayerId: localPlayerId,
+        currentGamePhase: gamePhase
+      });
+
       // Freeze camera at current position and begin fade-out transition
       frozenCameraX = cameraX;
       frozenCameraY = cameraY;
       frozenCameraZoom = cameraZoom;
       gameOverFadeStartTime = Date.now();
       gamePhase = 'gameOverTransition';
+      console.log('[game-end] Game phase changed to gameOverTransition, fade-out started');
       stopMusic();
       updateShootBtnVisibility();
       updateRotateOverlay();
@@ -1547,15 +1580,19 @@
       if (data.winnerId === 'draw') {
         winnerNameEl.textContent = "It's a Draw!";
         lastWinnerName = null;
+        console.log('[game-end] Winner display: Draw');
       } else if (data.winnerId === localPlayerId) {
         winnerNameEl.textContent = '🏆 You Win!';
         lastWinnerName = data.winnerName || null;
+        console.log('[game-end] Winner display: Local player wins');
       } else {
         winnerNameEl.textContent = 'Winner: ' + data.winnerName;
         lastWinnerName = data.winnerName || null;
+        console.log('[game-end] Winner display: Other player wins (' + data.winnerName + ')');
       }
       // Show post-match stats if available
       if (data.playerStats && data.playerStats.length > 0) {
+        console.log('[game-end] Rendering player stats, count:', data.playerStats.length);
         var statsSection = document.getElementById('statsSection');
         var statsBody = document.getElementById('statsBody');
         statsBody.innerHTML = '';
@@ -1571,12 +1608,18 @@
           statsBody.appendChild(tr);
         }
         statsSection.style.display = 'block';
+        console.log('[game-end] Player stats section displayed');
+      } else {
+        console.log('[game-end] No player stats available');
       }
       // Fetch updated leaderboard after a short delay so the server has time to write it
+      console.log('[game-end] Scheduling leaderboard fetch in 800ms');
       setTimeout(fetchLeaderboard, 800); // 800ms gives server time to persist the score
 
       // After fade-out completes, switch to gameOver phase and show the screen
+      console.log('[game-end] Scheduling game over screen display in ' + GAME_OVER_FADE_DURATION + 'ms');
       setTimeout(function() {
+        console.log('[game-end] Fade-out complete, switching to gameOver phase');
         gamePhase = 'gameOver';
         cameraX = 0;
         cameraY = 0;
@@ -1586,6 +1629,17 @@
         gameOverScreen.style.display = 'none';
         void gameOverScreen.offsetHeight; // trigger reflow to restart CSS animations
         gameOverScreen.style.display = 'flex';
+        console.log('[game-end] Game over screen displayed (display: flex)');
+
+        // Verify the screen is actually visible
+        var computedDisplay = window.getComputedStyle(gameOverScreen).display;
+        var computedVisibility = window.getComputedStyle(gameOverScreen).visibility;
+        var computedOpacity = window.getComputedStyle(gameOverScreen).opacity;
+        console.log('[game-end] Game over screen computed styles:', {
+          display: computedDisplay,
+          visibility: computedVisibility,
+          opacity: computedOpacity
+        });
       }, GAME_OVER_FADE_DURATION);
     });
 
