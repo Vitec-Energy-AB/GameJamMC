@@ -181,6 +181,7 @@
     .char-card:hover { border-color: #e94560; }
     .char-card.selected { border-color: #e94560; }
     .char-dot { width: 28px; height: 28px; border-radius: 6px; margin: 0 auto 4px; }
+    .char-preview { width: 56px; height: 56px; margin: 0 auto 4px; image-rendering: pixelated; display: block; }
     .char-name { font-weight: bold; font-size: 0.85rem; color: #eee; }
     .char-desc { font-size: 0.65rem; color: #aaa; margin-top: 2px; }
     #musicToggle { position: fixed; top: 8px; right: 12px; background: rgba(0,0,0,0.5);
@@ -277,22 +278,22 @@
           <label>Choose Character</label>
           <div class="char-cards" id="charCards">
             <div class="char-card selected" data-char="bjork">
-              <div class="char-dot" style="background:#4CAF50;"></div>
+              <canvas class="char-preview" data-char="bjork" width="56" height="56"></canvas>
               <div class="char-name">Bjork</div>
               <div class="char-desc">Balanced</div>
             </div>
             <div class="char-card" data-char="gnista">
-              <div class="char-dot" style="background:#FF9800;"></div>
+              <canvas class="char-preview" data-char="gnista" width="56" height="56"></canvas>
               <div class="char-name">Gnista</div>
               <div class="char-desc">Fast &amp; light</div>
             </div>
             <div class="char-card" data-char="malm">
-              <div class="char-dot" style="background:#795548;"></div>
+              <canvas class="char-preview" data-char="malm" width="56" height="56"></canvas>
               <div class="char-name">Malm</div>
               <div class="char-desc">Heavy hitter</div>
             </div>
             <div class="char-card" data-char="dimma">
-              <div class="char-dot" style="background:#9C27B0;"></div>
+              <canvas class="char-preview" data-char="dimma" width="56" height="56"></canvas>
               <div class="char-name">Dimma</div>
               <div class="char-desc">Triple jump</div>
             </div>
@@ -312,22 +313,22 @@
         <label>Choose Character</label>
         <div class="char-cards" id="lobbyCharCards">
           <div class="char-card selected" data-char="bjork">
-            <div class="char-dot" style="background:#4CAF50;"></div>
+            <canvas class="char-preview" data-char="bjork" width="56" height="56"></canvas>
             <div class="char-name">Bjork</div>
             <div class="char-desc">Balanced</div>
           </div>
           <div class="char-card" data-char="gnista">
-            <div class="char-dot" style="background:#FF9800;"></div>
+            <canvas class="char-preview" data-char="gnista" width="56" height="56"></canvas>
             <div class="char-name">Gnista</div>
             <div class="char-desc">Fast &amp; light</div>
           </div>
           <div class="char-card" data-char="malm">
-            <div class="char-dot" style="background:#795548;"></div>
+            <canvas class="char-preview" data-char="malm" width="56" height="56"></canvas>
             <div class="char-name">Malm</div>
             <div class="char-desc">Heavy hitter</div>
           </div>
           <div class="char-card" data-char="dimma">
-            <div class="char-dot" style="background:#9C27B0;"></div>
+            <canvas class="char-preview" data-char="dimma" width="56" height="56"></canvas>
             <div class="char-name">Dimma</div>
             <div class="char-desc">Triple jump</div>
           </div>
@@ -556,6 +557,65 @@
   // ── Sprite Loading ──────────────────────────────────────────────────────────
   var sprites = {};
   var spritesLoaded = false;
+
+  var CHARACTER_IDLE_SPRITES = {
+    'bjork': 'PlayerIdle',
+    'gnista': 'PlayerIdle',
+    'malm': 'PlayerHeavyIdle',
+    'dimma': 'PlayerIdle'
+  };
+
+  var CHARACTER_COLORS = {
+    'bjork': '#4CAF50',
+    'gnista': '#FF9800',
+    'malm': null,
+    'dimma': '#9C27B0'
+  };
+
+  function renderCharacterPreviews() {
+    var canvases = document.querySelectorAll('canvas.char-preview');
+    for (var i = 0; i < canvases.length; i++) {
+      (function(canvas) {
+        var charId = canvas.getAttribute('data-char');
+        var spriteKey = CHARACTER_IDLE_SPRITES[charId];
+        var color = CHARACTER_COLORS[charId];
+        var img = spriteKey && sprites[spriteKey];
+        var ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (img && img.complete && img.naturalWidth > 0) {
+          // Sprite sheets are horizontal strips with square frames (frame width = frame height = sheet height)
+          var frameH = img.naturalHeight;
+          var frameW = frameH;
+          ctx.drawImage(img, 0, 0, frameW, frameH, 0, 0, canvas.width, canvas.height);
+          if (color) {
+            ctx.globalCompositeOperation = 'source-atop';
+            ctx.fillStyle = color + '60'; // ~38% opacity tint (0x60 = 96/255)
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.globalCompositeOperation = 'source-over';
+          }
+        } else {
+          // Fallback: draw rounded colored rectangle matching original char-dot style
+          var fallbackColor = color || '#795548';
+          var r = 6;
+          var w = canvas.width;
+          var h = canvas.height;
+          ctx.fillStyle = fallbackColor;
+          ctx.beginPath();
+          ctx.moveTo(r, 0);
+          ctx.lineTo(w - r, 0);
+          ctx.arcTo(w, 0, w, r, r);
+          ctx.lineTo(w, h - r);
+          ctx.arcTo(w, h, w - r, h, r);
+          ctx.lineTo(r, h);
+          ctx.arcTo(0, h, 0, h - r, r);
+          ctx.lineTo(0, r);
+          ctx.arcTo(0, 0, r, 0, r);
+          ctx.closePath();
+          ctx.fill();
+        }
+      })(canvases[i]);
+    }
+  }
 
   var spriteList = {
     // Player animations
@@ -3069,6 +3129,7 @@
   // Load sprites first
   loadSprites(function() {
     console.log('Sprites loaded successfully');
+    renderCharacterPreviews();
   });
 
   // Fetch lobby leaderboard on page load
