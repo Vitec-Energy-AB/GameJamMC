@@ -24,7 +24,7 @@ const AUTO_DEATH_DAMAGE_THRESHOLD = 800;
 const OVERDAMAGE_VERTICAL_VELOCITY = -2000;
 const OVERDAMAGE_HORIZONTAL_VELOCITY = 1500;
 const ATTACK_ANIMATION_DURATION_MS = 300;
-const BLAST_ZONE_TOP_BUFFER = 100; // Extra px above the sliding window before the top blast zone kills players
+const BLAST_ZONE_TOP_BUFFER = 200; // Extra px above the sliding window before the top blast zone kills players
 
 export class GameLoop {
   private intervals: Map<string, ReturnType<typeof setInterval>> = new Map();

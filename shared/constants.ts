@@ -6,4 +6,4 @@ export const PLAYER_HEIGHT = 120;
 export const GAME_VERSION = '1.0.0';
 
 /** Height of the active game window above the lava surface (in pixels) */
-export const WINDOW_HEIGHT = 900;
+export const WINDOW_HEIGHT = 1400;
