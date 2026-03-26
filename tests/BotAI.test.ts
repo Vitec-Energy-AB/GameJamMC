@@ -531,7 +531,7 @@ describe('BotBehaviors – recoveryJump', () => {
   });
 
   test('moves toward the center of the stage', () => {
-    // Bot on the left side – should move right toward center (600)
+    // Bot on the left side – should move right toward center (650)
     const bot = makePlayer({ position: { x: 50, y: 400 }, isGrounded: false, jumpsRemaining: 1 });
     const match = makeMatch(bot);
     // blastZones: left=-1000, right=2300 → center = 650
