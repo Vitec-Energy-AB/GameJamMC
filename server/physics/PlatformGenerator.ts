@@ -11,6 +11,7 @@ const PLATFORM_WIDTH_MAX = 150;
 const PLATFORM_HEIGHT = 15;
 const GENERATION_BUFFER = 150; // Generate platforms this many px above the top of the active window
 const MAX_ROWS_PER_TICK = 2;   // Rate-limit: generate at most this many rows per tick
+const MAX_ACTIVE_PLATFORMS = 40; // Cap on total number of active platforms at any time
 const MAP_WIDTH = 1200;
 const PLATFORM_MARGIN = 30;
 const MIN_PLATFORM_SPACING = 30; // Minimum horizontal gap between platforms
@@ -50,7 +51,11 @@ export function updatePlatformGeneration(match: Match, io: Server, highestPlayer
 
   let rowsGenerated = 0;
 
-  while (state.highestGeneratedY > targetY && rowsGenerated < MAX_ROWS_PER_TICK) {
+  while (
+    state.highestGeneratedY > targetY &&
+    rowsGenerated < MAX_ROWS_PER_TICK &&
+    match.map.platforms.length < MAX_ACTIVE_PLATFORMS
+  ) {
     const gap = VERTICAL_GAP_MIN + Math.random() * (VERTICAL_GAP_MAX - VERTICAL_GAP_MIN);
     const newY = state.highestGeneratedY - gap;
 
