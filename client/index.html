@@ -104,10 +104,6 @@
       transform: scale(0.98);
       background: #229954;
     }
-    @keyframes fadeInUp {
-      from { opacity: 0; transform: translateY(20px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
     #gameOverScreen {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0,0,0,1); display: none; flex-direction: column;
@@ -115,30 +111,15 @@
       pointer-events: auto; overflow-y: auto;
       padding: 20px;
     }
-    #gameOverTitle {
+    /* Transition-based fade-in for game over children */
+    .game-over-child {
       opacity: 0;
-      animation: fadeInUp 0.6s ease forwards;
-      animation-delay: 0.1s;
+      transform: translateY(20px);
+      transition: opacity 0.5s ease, transform 0.5s ease;
     }
-    #winnerName {
-      opacity: 0;
-      animation: fadeInUp 0.6s ease forwards;
-      animation-delay: 0.4s;
-    }
-    #statsSection {
-      opacity: 0;
-      animation: fadeInUp 0.6s ease forwards;
-      animation-delay: 0.9s;
-    }
-    #leaderboardSection {
-      opacity: 0;
-      animation: fadeInUp 0.6s ease forwards;
-      animation-delay: 1.4s;
-    }
-    #playAgainBtn, #backToLobbyBtn {
-      opacity: 0;
-      animation: fadeInUp 0.5s ease forwards;
-      animation-delay: 1.8s;
+    .game-over-child.visible {
+      opacity: 1;
+      transform: translateY(0);
     }
     #backToLobbyBtn {
       background: #3498db; color: #fff; padding: 12px 40px; font-size: 1.2rem;
@@ -422,9 +403,9 @@
 </div>
 
 <div id="gameOverScreen">
-  <div id="gameOverTitle">GAME OVER</div>
-  <div id="winnerName"></div>
-  <div id="statsSection" style="display:none">
+  <div id="gameOverTitle" class="game-over-child">GAME OVER</div>
+  <div id="winnerName" class="game-over-child"></div>
+  <div id="statsSection" class="game-over-child" style="display:none">
     <h3>📊 Match Stats</h3>
     <table id="statsTable">
       <thead>
@@ -438,7 +419,7 @@
       <tbody id="statsBody"></tbody>
     </table>
   </div>
-  <div id="leaderboardSection">
+  <div id="leaderboardSection" class="game-over-child">
     <h3>&#x1F3C6; Top 10 Leaderboard</h3>
     <table id="leaderboardTable">
       <thead>
@@ -453,8 +434,8 @@
     </table>
     <div id="leaderboardStatus">Loading leaderboard...</div>
   </div>
-  <button id="playAgainBtn" onclick="location.reload()">Play Again</button>
-  <button id="backToLobbyBtn">Back to Lobby</button>
+  <button id="playAgainBtn" class="game-over-child" onclick="location.reload()">Play Again</button>
+  <button id="backToLobbyBtn" class="game-over-child">Back to Lobby</button>
 </div>
 
 <div id="rotateOverlay">
@@ -1606,15 +1587,26 @@
         cameraZoom = 1.0;
         targetZoom = 1.0;
         gameOverScreen.style.display = 'flex';
-        // Restart CSS animations on each child element so they fade in correctly
-        var animatedChildren = ['gameOverTitle', 'winnerName', 'statsSection', 'leaderboardSection', 'playAgainBtn', 'backToLobbyBtn'];
+
+        // Use JS-driven transitions with staggered delays instead of CSS animations
+        var animatedChildren = [
+          { id: 'gameOverTitle', delay: 100 },
+          { id: 'winnerName', delay: 400 },
+          { id: 'statsSection', delay: 900 },
+          { id: 'leaderboardSection', delay: 1400 },
+          { id: 'playAgainBtn', delay: 1800 },
+          { id: 'backToLobbyBtn', delay: 1800 }
+        ];
+
         for (var i = 0; i < animatedChildren.length; i++) {
-          var el = document.getElementById(animatedChildren[i]);
-          if (el) {
-            el.style.animation = 'none';
-            void el.offsetHeight; // trigger reflow to restart animation
-            el.style.animation = '';
-          }
+          (function(child) {
+            setTimeout(function() {
+              var el = document.getElementById(child.id);
+              if (el) {
+                el.classList.add('visible');
+              }
+            }, child.delay);
+          })(animatedChildren[i]);
         }
       }, GAME_OVER_FADE_DURATION);
     });
@@ -1623,6 +1615,13 @@
     if (backToLobbyBtn) {
       backToLobbyBtn.addEventListener('click', function() {
         gamePhase = 'lobby';
+
+        // Remove 'visible' class from all game over children to reset for next time
+        var children = document.querySelectorAll('.game-over-child');
+        for (var i = 0; i < children.length; i++) {
+          children[i].classList.remove('visible');
+        }
+
         gameOverScreen.style.display = 'none';
         roomSelectorOverlay.style.display = 'flex';
         if (socket) socket.emit('rooms:list');
