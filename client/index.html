@@ -2869,10 +2869,9 @@
         targetZoom = Math.max(0.55, Math.min(1.4, targetZoom));
         cameraZoom += (targetZoom - cameraZoom) * 0.05;
 
-        // Clamp camera Y to stay within the active window (between windowTop and lava surface)
-        if (currentWindowTop !== null && currentLavaY !== null) {
+        // Clamp camera Y to stay above lava surface (camera follows player freely upward)
+        if (currentLavaY !== null) {
           var halfViewH = (screenH / 2) / (cameraZoom * viewScale);
-          cameraY = Math.max(currentWindowTop + halfViewH, cameraY);
           cameraY = Math.min(currentLavaY - halfViewH, cameraY);
         }
       }
