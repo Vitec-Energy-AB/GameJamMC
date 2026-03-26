@@ -29,8 +29,8 @@ export const volcanoPeak: GameMap = {
   blastZones: {
     top: -500,
     bottom: 900,
-    left: -100,
-    right: 1300,
+    left: -1000,
+    right: 2300,
   },
   crumblingPlatforms: [
     // Three crumbling platforms across the lava gap

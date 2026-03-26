@@ -13,7 +13,7 @@ function makeMatch(overrides: Partial<Match> = {}): Match {
       platforms: [],
       spawnPoints: [{ x: 400, y: 300 }],
       itemSpawnPoints: [],
-      blastZones: { top: -200, bottom: 900, left: -200, right: 1400 },
+      blastZones: { top: -200, bottom: 900, left: -1000, right: 2300 },
     },
     mode: 'stock',
     tick: 0,

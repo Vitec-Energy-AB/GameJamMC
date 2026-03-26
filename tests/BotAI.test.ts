@@ -62,7 +62,7 @@ function makeMatch(botPlayer: Player, extras: Player[] = []): Match {
       platforms: [],
       spawnPoints: [{ x: 400, y: 300 }],
       itemSpawnPoints: [],
-      blastZones: { top: -200, bottom: 900, left: -200, right: 1400 },
+      blastZones: { top: -200, bottom: 900, left: -1000, right: 2300 },
     },
     mode: 'stock',
     tick: 0,
@@ -534,7 +534,7 @@ describe('BotBehaviors – recoveryJump', () => {
     // Bot on the left side – should move right toward center (600)
     const bot = makePlayer({ position: { x: 50, y: 400 }, isGrounded: false, jumpsRemaining: 1 });
     const match = makeMatch(bot);
-    // blastZones: left=-200, right=1400 → center = 600
+    // blastZones: left=-1000, right=2300 → center = 650
     const config = getBotConfig(3);
     recoveryJump(bot, match, config);
     expect(bot.inputState.right).toBe(true);
