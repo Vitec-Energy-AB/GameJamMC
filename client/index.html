@@ -1391,7 +1391,7 @@
             if (lp && lp.currentWeapon && lp.currentWeapon.id === data.itemId) {
               var px = lp.position.x + PLAYER_W / 2;
               var py = lp.position.y + PLAYER_H / 2;
-              for (var _bi = 0; _bi < 8; _bi++) {
+              for (var bpIdx = 0; bpIdx < 8; bpIdx++) {
                 var angle = Math.random() * Math.PI * 2;
                 var speed = 60 + Math.random() * 140;
                 weaponBreakParticles.push({
@@ -2000,7 +2000,7 @@
 
       ctx.save();
       ctx.globalAlpha = pulse;
-      if ('type' in item && !('pickedUpBy' in item)) {
+      if ('type' in item && !('category' in item)) {
         // Powerup - use PowerUp sprite
         if (spritesLoaded && sprites['PowerUp'] && sprites['PowerUp'].complete) {
           var pCol = POWERUP_COLORS[item.type] || '#fff';
