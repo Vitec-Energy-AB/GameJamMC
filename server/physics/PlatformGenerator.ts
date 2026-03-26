@@ -1,5 +1,6 @@
 import { Match, Platform } from '../../shared/types';
 import { Server } from 'socket.io';
+import { WINDOW_HEIGHT } from '../../shared/constants';
 
 const VERTICAL_GAP_MIN = 100;
 const VERTICAL_GAP_MAX = 130;
@@ -8,8 +9,8 @@ const PLATFORMS_PER_ROW_MAX = 2;
 const PLATFORM_WIDTH_MIN = 90;
 const PLATFORM_WIDTH_MAX = 150;
 const PLATFORM_HEIGHT = 15;
-const GENERATION_AHEAD = 150; // Generate platforms 150px above lava
-const PLAYER_GENERATION_AHEAD = 200; // Generate platforms 200px above highest player
+const GENERATION_BUFFER = 150; // Generate platforms this many px above the top of the active window
+const MAX_ROWS_PER_TICK = 2;   // Rate-limit: generate at most this many rows per tick
 const MAP_WIDTH = 1200;
 const PLATFORM_MARGIN = 30;
 const MIN_PLATFORM_SPACING = 30; // Minimum horizontal gap between platforms
@@ -38,15 +39,18 @@ export function updatePlatformGeneration(match: Match, io: Server, highestPlayer
   const state = generatorStates.get(match.roomId);
   if (!state) return;
 
-  // Determine how far ahead to generate: furthest of player-based and lava-based targets
-  // (lower Y value = higher on screen)
-  let targetY = highestPlayerY - PLAYER_GENERATION_AHEAD;
+  // Generate platforms based solely on lava position to keep generation in sync with the
+  // active window.  When lava is not active yet, fall back to player-based targeting.
+  let targetY: number;
   if (lava && lava.active) {
-    const lavaTargetY = lava.currentY - GENERATION_AHEAD;
-    targetY = Math.min(targetY, lavaTargetY);
+    targetY = lava.currentY - WINDOW_HEIGHT - GENERATION_BUFFER;
+  } else {
+    targetY = highestPlayerY - GENERATION_BUFFER;
   }
 
-  while (state.highestGeneratedY > targetY) {
+  let rowsGenerated = 0;
+
+  while (state.highestGeneratedY > targetY && rowsGenerated < MAX_ROWS_PER_TICK) {
     const gap = VERTICAL_GAP_MIN + Math.random() * (VERTICAL_GAP_MAX - VERTICAL_GAP_MIN);
     const newY = state.highestGeneratedY - gap;
 
@@ -106,18 +110,18 @@ export function updatePlatformGeneration(match: Match, io: Server, highestPlayer
 
     state.highestGeneratedY = newY;
     state.rowCount++;
+    rowsGenerated++;
 
     io.to(match.roomId).emit('platforms:generated', {
       platforms: newPlatforms,
     });
   }
 
-  // Clean up platforms far below the current action zone (performance)
-  let cleanupThreshold = highestPlayerY + 800; // 800px below the highest player
-  if (lava && lava.active) {
-    cleanupThreshold = Math.min(cleanupThreshold, lava.currentY + 200);
-  }
-  match.map.platforms = match.map.platforms.filter(p => p.y < cleanupThreshold);
+  // Clean up platforms and spawn points that have been swallowed by the lava
+  const cleanupY = lava && lava.active ? lava.currentY + 50 : highestPlayerY + 800;
+  match.map.platforms = match.map.platforms.filter(p => p.y < cleanupY);
+  match.map.spawnPoints = match.map.spawnPoints.filter(s => s.y < cleanupY);
+  match.map.itemSpawnPoints = match.map.itemSpawnPoints.filter(s => s.y < cleanupY);
 }
 
 export function resetPlatformGenerator(roomId: string): void {

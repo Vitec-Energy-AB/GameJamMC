@@ -15,6 +15,7 @@ import { initLavaState, updateLava, resetLavaDamageTracking } from './physics/La
 import { initPlatformGenerator, updatePlatformGeneration, resetPlatformGenerator } from './physics/PlatformGenerator';
 import { BotManager } from './bots/BotManager';
 import { performAttack } from './combat/MeleeAttack';
+import { WINDOW_HEIGHT } from '../shared/constants';
 
 const TICK_RATE = 60;
 const TICK_INTERVAL = 1000 / TICK_RATE;
@@ -23,6 +24,7 @@ const AUTO_DEATH_DAMAGE_THRESHOLD = 800;
 const OVERDAMAGE_VERTICAL_VELOCITY = -2000;
 const OVERDAMAGE_HORIZONTAL_VELOCITY = 1500;
 const ATTACK_ANIMATION_DURATION_MS = 300;
+const BLAST_ZONE_TOP_BUFFER = 100; // Extra px above the sliding window before the top blast zone kills players
 
 export class GameLoop {
   private intervals: Map<string, ReturnType<typeof setInterval>> = new Map();
@@ -203,6 +205,13 @@ export class GameLoop {
       // Update rising lava
       updateLava(match, dt, io);
 
+      // Sliding window: keep blast zone top in sync with the active window above lava
+      let windowTop: number | null = null;
+      if (match.lavaState && match.lavaState.active) {
+        windowTop = match.lavaState.currentY - WINDOW_HEIGHT;
+        match.map.blastZones.top = windowTop - BLAST_ZONE_TOP_BUFFER;
+      }
+
       // Update platform generation
       const activePlayers = match.players.filter(p => p.status === 'alive' || p.status === 'respawning');
       const highestPlayerY = activePlayers.length > 0
@@ -257,6 +266,7 @@ export class GameLoop {
         items: match.items,
         projectiles: match.projectiles,
         lavaY: match.lavaState?.currentY ?? null,
+        windowTop,
         platforms: match.map.platforms,
         movingPlatforms: match.movingPlatforms.map(mp => ({
           id: mp.id,
