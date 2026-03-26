@@ -40,9 +40,18 @@ export class MatchManager {
     match.winner = winnerId;
 
     const winner = match.players.find(p => p.id === winnerId);
+    const playerStats = match.players.map(p => ({
+      id: p.id,
+      name: p.name,
+      kills: p.stats?.kills ?? 0,
+      deaths: p.stats?.deaths ?? 0,
+      damageDealt: Math.round(p.stats?.damageDealt ?? 0),
+      isWinner: p.id === winnerId,
+    }));
     io.to(roomId).emit('match:end', {
       winnerId,
       winnerName: winner?.name ?? 'Draw',
+      playerStats,
     });
 
     if (this.roomManager) {
@@ -104,6 +113,8 @@ export class MatchManager {
       player.freezeUntil = 0;
       player.shieldSplitterUntil = 0;
       player.damageMitigation = 0;
+      player.stats = { kills: 0, deaths: 0, damageDealt: 0 };
+      player.lastAttackerId = undefined;
     }
 
     // Move queued players in
@@ -150,6 +161,8 @@ export class MatchManager {
       player.freezeUntil = 0;
       player.shieldSplitterUntil = 0;
       player.damageMitigation = 0;
+      player.stats = { kills: 0, deaths: 0, damageDealt: 0 };
+      player.lastAttackerId = undefined;
     });
     match.bombs = [];
     match.items = [];
