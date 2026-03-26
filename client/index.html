@@ -591,7 +591,6 @@
   var attackPressed = false;
   var bombPressed = false;
   var pickupPressed = false;
-  var useWeaponPressed = false;
   var explosions = [];
   var lavaSplashes = [];   // splash effects when a player hits lava
   var playersInLava = Object.create(null);  // tracks which players are currently in lava for splash dedup
@@ -889,11 +888,10 @@
       case 'ArrowRight': case 'KeyD': localInput.right = true; break;
       case 'ArrowUp': case 'KeyW': case 'Space': localInput.jump = true; e.preventDefault(); break;
       case 'ArrowDown': case 'KeyS': localInput.duck = true; break;
-      case 'KeyZ': localInput.attack = true; break;
+      case 'KeyZ': case 'KeyQ': case 'KeyX': localInput.attack = true; break;
       case 'KeyC': localInput.block = true; break;
       case 'KeyB': localInput.throwBomb = true; break;
       case 'KeyE': localInput.pickup = true; break;
-      case 'KeyQ': case 'KeyX': localInput.useWeapon = true; break;
       case 'KeyM': setMusicOn(!musicOn); break;
     }
   });
@@ -903,11 +901,10 @@
       case 'ArrowRight': case 'KeyD': localInput.right = false; break;
       case 'ArrowUp': case 'KeyW': case 'Space': localInput.jump = false; break;
       case 'ArrowDown': case 'KeyS': localInput.duck = false; break;
-      case 'KeyZ': localInput.attack = false; break;
+      case 'KeyZ': case 'KeyQ': case 'KeyX': localInput.attack = false; break;
       case 'KeyC': localInput.block = false; break;
       case 'KeyB': localInput.throwBomb = false; break;
       case 'KeyE': localInput.pickup = false; break;
-      case 'KeyQ': case 'KeyX': localInput.useWeapon = false; break;
     }
   });
 
@@ -2495,11 +2492,6 @@
       socket.emit('item:pickup');
     }
     pickupPressed = localInput.pickup;
-
-    if (localInput.useWeapon && !useWeaponPressed) {
-      socket.emit('item:use');
-    }
-    useWeaponPressed = localInput.useWeapon;
 
     socket.emit('player:block', localInput.block);
 

@@ -29,7 +29,6 @@ export class GameLoop {
   private jumpPressed: Map<string, boolean> = new Map();
   private attackPressed: Map<string, boolean> = new Map();
   private throwBombPressed: Map<string, boolean> = new Map();
-  private useWeaponPressed: Map<string, boolean> = new Map();
   private duckStartTimes: Map<string, number> = new Map();
   private matchManager: MatchManager;
   private itemSpawnManager: ItemSpawnManager;
@@ -141,9 +140,15 @@ export class GameLoop {
         updateBlock(player, dt);
 
         // Attack handling (edge-detected so it fires once per press)
+        // Uses weapon if available: thrown weapons fire a projectile, melee weapons
+        // use weapon stats, and no weapon falls back to a short-range melee attack.
         const prevAttack = this.attackPressed.get(player.id) ?? false;
         if (player.inputState.attack && !prevAttack) {
-          this.handleMeleeAttack(player, match, io, now);
+          if (player.currentWeapon && player.currentWeapon.category === 'thrown') {
+            this.itemSpawnManager.handleUseWeapon(match, player.id, io);
+          } else {
+            this.handleMeleeAttack(player, match, io, now);
+          }
         }
         this.attackPressed.set(player.id, player.inputState.attack);
 
@@ -158,17 +163,6 @@ export class GameLoop {
           }
         }
         this.throwBombPressed.set(player.id, player.inputState.throwBomb);
-
-        // Use weapon handling (edge-detected)
-        const prevUseWeapon = this.useWeaponPressed.get(player.id) ?? false;
-        if (player.inputState.useWeapon && !prevUseWeapon) {
-          if (player.currentWeapon && player.currentWeapon.category === 'melee') {
-            this.handleMeleeAttack(player, match, io, now);
-          } else {
-            this.itemSpawnManager.handleUseWeapon(match, player.id, io);
-          }
-        }
-        this.useWeaponPressed.set(player.id, player.inputState.useWeapon);
 
         // Clear attack animation flag after duration expires
         if (player.isAttacking && player.attackAnimUntil !== undefined && now >= player.attackAnimUntil) {

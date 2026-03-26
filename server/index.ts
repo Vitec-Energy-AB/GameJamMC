@@ -187,7 +187,13 @@ io.on('connection', (socket) => {
     const player = match.players.find(p => p.id === socket.id);
     if (!player || player.status !== 'alive') return;
 
-    // If player has a melee weapon, use its stats
+    // If player has a thrown weapon, fire a projectile instead of melee
+    if (player.currentWeapon && player.currentWeapon.category === 'thrown') {
+      gameLoop.getItemSpawnManager().handleUseWeapon(match, socket.id, io);
+      return;
+    }
+
+    // If player has a melee weapon, use its stats; otherwise plain melee
     let weaponOverride: { damage: number; knockbackModifier: number } | undefined;
     if (player.currentWeapon && player.currentWeapon.category === 'melee') {
       // Capture stats before handleMeleeWeaponAttack may null out currentWeapon on last durability hit
