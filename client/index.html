@@ -1435,7 +1435,7 @@
         var statsSection = document.getElementById('statsSection');
         var statsBody = document.getElementById('statsBody');
         statsBody.innerHTML = '';
-        var sorted = data.playerStats.slice().sort(function(a, b) { return b.kills - a.kills || b.damageDealt - a.damageDealt; });
+        var sorted = data.playerStats.slice().sort(function(a, b) { return b.kills - a.kills || b.damageDealt - a.damageDealt || a.deaths - b.deaths; });
         for (var si = 0; si < sorted.length; si++) {
           var ps = sorted[si];
           var tr = document.createElement('tr');
@@ -1443,7 +1443,7 @@
           tr.innerHTML = '<td>' + (ps.isWinner ? '🏆 ' : '') + ps.name + '</td>' +
             '<td>' + ps.kills + '</td>' +
             '<td>' + ps.deaths + '</td>' +
-            '<td>' + ps.damageDealt + '%</td>';
+            '<td>' + ps.damageDealt + '</td>';
           statsBody.appendChild(tr);
         }
         statsSection.style.display = 'block';
@@ -2250,9 +2250,6 @@
         ctx.stroke();
         ctx.restore();
       }
-
-      ctx.shadowColor = col;
-      ctx.shadowBlur = p.id === localId ? 12 : 4;
 
       // Freeze tint (blue overlay)
       if ((p.freezeUntil ?? 0) > now) {
