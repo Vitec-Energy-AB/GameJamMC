@@ -107,7 +107,7 @@
     #gameOverScreen {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0,0,0,1); display: none; flex-direction: column;
-      align-items: center; justify-content: center; z-index: 20;
+      align-items: center; justify-content: center; z-index: 150;
       pointer-events: auto; overflow-y: auto;
       padding: 20px;
     }
@@ -1593,6 +1593,9 @@
         // Hide canvas so it cannot paint over the game over screen
         canvas.style.display = 'none';
         gameOverScreen.style.display = 'flex';
+        // Hide rotate overlay and shoot button to ensure they don't cover the game over screen
+        updateRotateOverlay();
+        updateShootBtnVisibility();
 
         // Reset all children to invisible first so the fade-in plays every time
         var allChildren = document.querySelectorAll('.game-over-child');
