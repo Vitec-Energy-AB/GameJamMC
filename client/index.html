@@ -776,6 +776,7 @@
   var cameraX = 0;
   var cameraZoom = 1.0;
   var targetZoom = 1.0;
+  var isMobile = window.matchMedia('(pointer: coarse)').matches;
   var viewScale = 1.0;
   // Joystick state
   var joystickVisible = false;
@@ -2970,7 +2971,7 @@
         // Dynamic zoom based on alive players and distance to nearest opponent
         var alivePlayers = state.players.filter(function(p) { return p.status !== 'eliminated'; });
         if (alivePlayers.length <= 1) {
-          targetZoom = 0.90;
+          targetZoom = isMobile ? 1.1 : 0.90;
         } else {
           var minDist = Infinity;
           for (var pi = 0; pi < alivePlayers.length; pi++) {
@@ -2981,8 +2982,13 @@
             var dist = Math.sqrt(dx * dx + dy * dy);
             if (dist < minDist) minDist = dist;
           }
-          // Map distance 0-1400 → zoom 0.85-0.55 (range = 0.85 - 0.55 = 0.30)
-          targetZoom = 0.85 - (Math.min(minDist, 1400) / 1400) * 0.30;
+          if (isMobile) {
+            // Mobile: Map distance 0-1400 → zoom 1.0-0.55 (range = 1.0 - 0.55 = 0.45)
+            targetZoom = 1.0 - (Math.min(minDist, 1400) / 1400) * 0.45;
+          } else {
+            // Desktop: Map distance 0-1400 → zoom 0.85-0.55 (range = 0.85 - 0.55 = 0.30)
+            targetZoom = 0.85 - (Math.min(minDist, 1400) / 1400) * 0.30;
+          }
         }
         targetZoom = Math.max(0.55, Math.min(1.3, targetZoom));
         cameraZoom += (targetZoom - cameraZoom) * 0.05;
