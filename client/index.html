@@ -1588,6 +1588,12 @@
         targetZoom = 1.0;
         gameOverScreen.style.display = 'flex';
 
+        // Reset all children to invisible first so the fade-in plays every time
+        var allChildren = document.querySelectorAll('.game-over-child');
+        for (var j = 0; j < allChildren.length; j++) {
+          allChildren[j].classList.remove('visible');
+        }
+
         // Use JS-driven transitions with staggered delays instead of CSS animations
         var animatedChildren = [
           { id: 'gameOverTitle', delay: 100 },
