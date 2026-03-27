@@ -60,7 +60,7 @@
       align-items: center; justify-content: center; z-index: 10;
       overflow-y: auto;
       padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
-      pointer-events: none;
+      pointer-events: auto;
     }
     #roomSelectorOverlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -107,9 +107,10 @@
     #gameOverScreen {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0,0,0,1); display: none; flex-direction: column;
-      align-items: center; justify-content: center; z-index: 150;
+      align-items: center; justify-content: flex-start; z-index: 150;
       pointer-events: auto; overflow-y: auto;
-      padding: 20px;
+      -webkit-overflow-scrolling: touch;
+      padding: calc(20px + env(safe-area-inset-top, 0px)) 20px calc(20px + env(safe-area-inset-bottom, 0px)) 20px;
     }
     /* Transition-based fade-in for game over children */
     .game-over-child {
@@ -1593,7 +1594,8 @@
         // Hide canvas so it cannot paint over the game over screen
         canvas.style.display = 'none';
         gameOverScreen.style.display = 'flex';
-        // Hide rotate overlay and shoot button to ensure they don't cover the game over screen
+        // Explicitly hide rotate overlay and shoot button so they don't cover the game over screen
+        if (rotateOverlay) rotateOverlay.style.display = 'none';
         updateRotateOverlay();
         updateShootBtnVisibility();
 
