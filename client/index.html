@@ -1092,7 +1092,8 @@
 
   // ── Touch / Swipe Input ─────────────────────────────────────────────────────
   (function() {
-    var SWIPE_THRESHOLD = 30; // CSS px – minimum displacement to register a direction
+    var isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
+    var SWIPE_THRESHOLD = isTouchDevice ? 10 : 30; // CSS px – lower on mobile for higher sensitivity
     var shootBtn = document.getElementById('shootBtn');
 
     // Track the active swipe session (one finger on the playfield at a time)

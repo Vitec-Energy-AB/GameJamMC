@@ -33,7 +33,8 @@ window.addEventListener('keyup', (e) => {
 // ── Touch / Swipe Input Provider ─────────────────────────────────────────────
 // Provides 4-direction swipe movement and shoot button support for touch devices.
 // Pointer Events are used so the same code works on mobile browsers and stylus input.
-const SWIPE_THRESHOLD = 30; // CSS px
+const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
+const SWIPE_THRESHOLD = isTouchDevice ? 10 : 30; // CSS px – lower on mobile for higher sensitivity
 
 let swipePointerId: number | null = null;
 let swipeStartX = 0;
