@@ -747,6 +747,7 @@
   // Fade-out transition state
   var gameOverFadeStartTime = 0;
   var GAME_OVER_FADE_DURATION = 1500; // ms
+  var GAME_OVER_FALLBACK_DELAY = 3000; // ms — safety net to force children visible if transitions fail
   var frozenCameraX = 0;
   var frozenCameraY = 0;
   var frozenCameraZoom = 1.0;
@@ -1560,9 +1561,10 @@
         winnerNameEl.textContent = 'Winner: ' + data.winnerName;
         lastWinnerName = data.winnerName || null;
       }
-      // Show post-match stats if available
+      // Reset stats section; show only when stats are available
+      var statsSection = document.getElementById('statsSection');
+      statsSection.style.display = 'none';
       if (data.playerStats && data.playerStats.length > 0) {
-        var statsSection = document.getElementById('statsSection');
         var statsBody = document.getElementById('statsBody');
         statsBody.innerHTML = '';
         var sorted = data.playerStats.slice().sort(function(a, b) { return b.kills - a.kills || b.damageDealt - a.damageDealt || a.deaths - b.deaths; });
@@ -1588,6 +1590,8 @@
         cameraY = 0;
         cameraZoom = 1.0;
         targetZoom = 1.0;
+        // Hide canvas so it cannot paint over the game over screen
+        canvas.style.display = 'none';
         gameOverScreen.style.display = 'flex';
 
         // Reset all children to invisible first so the fade-in plays every time
@@ -1595,6 +1599,10 @@
         for (var j = 0; j < allChildren.length; j++) {
           allChildren[j].classList.remove('visible');
         }
+
+        // Force a browser reflow so the browser registers the opacity:0 start state
+        // before we schedule the transitions. Without this the transition may not fire.
+        void gameOverScreen.offsetHeight;
 
         // Use JS-driven transitions with staggered delays instead of CSS animations
         var animatedChildren = [
@@ -1616,6 +1624,14 @@
             }, child.delay);
           })(animatedChildren[i]);
         }
+
+        // Fallback: ensure all children are visible after a delay in case transitions failed
+        setTimeout(function() {
+          var fallbackChildren = document.querySelectorAll('.game-over-child');
+          for (var k = 0; k < fallbackChildren.length; k++) {
+            fallbackChildren[k].classList.add('visible');
+          }
+        }, GAME_OVER_FALLBACK_DELAY);
       }, GAME_OVER_FADE_DURATION);
     });
 
@@ -1630,6 +1646,8 @@
           children[i].classList.remove('visible');
         }
 
+        // Restore canvas visibility for the next game
+        canvas.style.display = '';
         gameOverScreen.style.display = 'none';
         roomSelectorOverlay.style.display = 'flex';
         if (socket) socket.emit('rooms:list');
@@ -2906,13 +2924,17 @@
     var now = Date.now();
 
     if (gamePhase !== 'playing' && gamePhase !== 'gameOverTransition') {
-      drawBackground();
-      var _dpr = window.devicePixelRatio || 1;
-      ctx.save();
-      ctx.scale(_dpr, _dpr);
-      ctx.fillStyle = 'rgba(0,0,0,0.6)';
-      ctx.fillRect(0, 0, canvas.width / _dpr, canvas.height / _dpr);
-      ctx.restore();
+      // Canvas is hidden during gameOver so the HTML overlay is fully visible.
+      // For other non-playing phases draw a dark background overlay and bail out.
+      if (gamePhase !== 'gameOver') {
+        drawBackground();
+        var _dpr = window.devicePixelRatio || 1;
+        ctx.save();
+        ctx.scale(_dpr, _dpr);
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(0, 0, canvas.width / _dpr, canvas.height / _dpr);
+        ctx.restore();
+      }
       return;
     }
 
